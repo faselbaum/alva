@@ -6,7 +6,6 @@ import styled from 'styled-components';
 
 export interface StringItemProps {
 	className?: string;
-	label: string;
 	onBlur?: React.FocusEventHandler<HTMLInputElement>;
 	onChange?: React.ChangeEventHandler<HTMLInputElement>;
 	value?: string;
@@ -14,14 +13,6 @@ export interface StringItemProps {
 
 const StyledStringItem = styled.div`
 	width: 100%;
-`;
-
-const StyledLabel = styled.span`
-	display: block;
-	margin-bottom: ${getSpace(SpaceSize.XS)}px;
-	font-size: 12px;
-	font-family: ${fonts().NORMAL_FONT};
-	color: ${colors.grey36.toString()};
 `;
 
 const StyledInput = styled.input`
@@ -56,12 +47,11 @@ const StyledInput = styled.input`
 `;
 
 export const StringItem: React.StatelessComponent<StringItemProps> = props => {
-	const { className, onChange, onBlur, label, value } = props;
+	const { className, onChange, onBlur, value } = props;
 
 	return (
 		<StyledStringItem className={className}>
 			<label>
-				<StyledLabel>{label}</StyledLabel>
 				<StyledInput
 					onChange={onChange}
 					onBlur={onBlur}
