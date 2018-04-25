@@ -1,7 +1,7 @@
 import { colors } from '../colors';
 import { fonts } from '../fonts';
 import * as React from 'react';
-import { getSpace, Size } from '../space';
+import { getSpace, SpaceSize } from '../space';
 import styled from 'styled-components';
 
 export interface PropertyType {
@@ -24,7 +24,7 @@ const StyledPropertyItemHeader = styled.div`
 	justify-content: space-between;
 	font-size: 12px;
 	font-family: ${fonts().NORMAL_FONT};
-	margin-bottom: ${getSpace(Size.XS)}px;
+	margin-bottom: ${getSpace(SpaceSize.XS)}px;
 	color: ${colors.grey36.toString()};
 	flex-wrap: wrap;
 `;

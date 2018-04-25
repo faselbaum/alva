@@ -123,13 +123,28 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 					const type = property.getType();
 					const value = this.getValue(id, context && context.path);
 
+					const propTypes = [
+						{
+							id: type,
+							name: type
+						},
+						{
+							id: 'yolo',
+							name: 'Boolean'
+						},
+						{
+							id: 'slot',
+							name: 'Slot'
+						}
+					];
+
 					switch (type) {
 						case 'boolean':
 							return (
 								<PropertyItem
 									propertyName={name}
 									selectedPropertyType=""
-									propertyTypes={[]}
+									propertyTypes={propTypes}
 								>
 									<BooleanItem
 										key={id}
@@ -144,7 +159,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 								<PropertyItem
 									propertyName={name}
 									selectedPropertyType=""
-									propertyTypes={[]}
+									propertyTypes={propTypes}
 								>
 									<StringItem
 										key={id}
@@ -167,7 +182,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 								<PropertyItem
 									propertyName={name}
 									selectedPropertyType=""
-									propertyTypes={[]}
+									propertyTypes={propTypes}
 								>
 									<EnumItem
 										key={id}
@@ -186,7 +201,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 								<PropertyItem
 									propertyName={name}
 									selectedPropertyType=""
-									propertyTypes={[]}
+									propertyTypes={propTypes}
 								>
 									<AssetItem
 										key={id}
@@ -214,7 +229,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 								<PropertyItem
 									propertyName={name}
 									selectedPropertyType=""
-									propertyTypes={[]}
+									propertyTypes={propTypes}
 								>
 									<PropertyTree key={id} context={newContext} element={element} />
 								</PropertyItem>
@@ -225,7 +240,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 								<PropertyItem
 									propertyName={name}
 									selectedPropertyType=""
-									propertyTypes={[]}
+									propertyTypes={propTypes}
 								>
 									<div key={id}>Unknown type: {type}</div>
 								</PropertyItem>
