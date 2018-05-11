@@ -125,27 +125,17 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 					const type = property.getSupportedTypes()[0];
 					const value = this.getValue(id, context && context.path);
 
-					const propTypes = [
-						{
-							id: type.getId(),
-							name: type.getName()
-						},
-						{
-							id: 'yolo',
-							name: 'Boolean'
-						},
-						{
-							id: 'slot',
-							name: 'Slot'
-						}
-					];
+					const propTypes = property.getSupportedTypes().map(supportedType => ({
+						id: supportedType.getId(),
+						name: supportedType.getName()
+					}));
 
 					switch (type.getId()) {
 						case 'boolean':
 							return (
 								<PropertyItem
 									propertyName={name}
-									selectedPropertyType=""
+									selectedPropertyType={type.getId()}
 									propertyTypes={propTypes}
 								>
 									<BooleanItem

@@ -6,30 +6,31 @@ import { EnumPropertyType, Option } from '../../../store/styleguide/property/enu
 import { NumberPropertyType } from '../../../store/styleguide/property/number-property-type';
 import { ObjectPropertyType } from '../../../store/styleguide/property/object-property-type';
 import { Property } from '../../../store/styleguide/property/property';
+import { PropertyType } from '../../../store/styleguide/property/property-type';
 import { StringPropertyType } from '../../../store/styleguide/property/string-property-type';
 import * as ts from 'typescript';
 import { TypescriptUtils } from '../typescript/typescript-utils';
 
-interface PropertyFactoryArgs {
+interface PropertyTypeFactoryArgs {
 	symbol: ts.Symbol;
 	type: ts.Type;
 	typechecker: ts.TypeChecker;
 }
 
-type PropertyFactory = (args: PropertyFactoryArgs) => Property | undefined;
+type PropertyTypeFactory = (args: PropertyTypeFactoryArgs) => PropertyType | undefined;
 
 /**
  * A utility to analyze the Props types of components (like React components) and to map them to
  * Alva supported pattern properties.
  */
 export class PropertyAnalyzer {
-	private static PROPERTY_FACTORIES: PropertyFactory[] = [
-		PropertyAnalyzer.createBooleanProperty,
-		PropertyAnalyzer.createEnumProperty,
-		PropertyAnalyzer.createStringProperty,
-		PropertyAnalyzer.createNumberProperty,
+	private static PROPERTY_TYPE_FACTORIES: PropertyTypeFactory[] = [
+		PropertyAnalyzer.createBooleanPropertyType,
+		PropertyAnalyzer.createEnumPropertyType,
+		PropertyAnalyzer.createStringPropertyType,
+		PropertyAnalyzer.createNumberPropertyType,
 		PropertyAnalyzer.createArrayProperty,
-		PropertyAnalyzer.createObjectProperty
+		PropertyAnalyzer.createObjectPropertyType
 	];
 
 	/**
@@ -69,27 +70,45 @@ export class PropertyAnalyzer {
 	): Property | undefined {
 		const declaration = TypescriptUtils.findTypeDeclaration(symbol) as ts.Declaration;
 
-		let type = symbol.type
+		const propertyType = symbol.type
 			? symbol.type
 			: declaration && typechecker.getTypeAtLocation(declaration);
 
-		if (!type) {
+		if (!propertyType) {
 			return;
 		}
 
-		if (type.flags & ts.TypeFlags.Union) {
-			type = (type as ts.UnionType).types[0];
-		}
+		const property = new Property(symbol.name);
+		const propertyTypes =
+			propertyType.flags & ts.TypeFlags.Union
+				? (propertyType as ts.UnionType).types
+				: [propertyType];
 
-		for (const propertyFactory of this.PROPERTY_FACTORIES) {
-			const property: Property | undefined = propertyFactory({ symbol, type, typechecker });
-			if (property) {
-				this.setPropertyMetaData(property, symbol);
-				return property;
+		for (const type of propertyTypes) {
+			for (const propertyTypeFactory of this.PROPERTY_TYPE_FACTORIES) {
+				const supportedType = propertyTypeFactory({ symbol, type, typechecker });
+
+				if (supportedType) {
+					const isAlreadySupported = property
+						.getSupportedTypes()
+						.find(
+							alreadySupportedType =>
+								alreadySupportedType.getId() === supportedType.getId() &&
+								alreadySupportedType.getName() === supportedType.getName()
+						);
+					if (!isAlreadySupported) {
+						property.addSupportedType(supportedType);
+					}
+				}
 			}
 		}
 
-		return;
+		if (property.getSupportedTypes().length === 0) {
+			return;
+		}
+
+		this.setPropertyMetaData(property, symbol);
+		return property;
 	}
 
 	/**
@@ -99,7 +118,7 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createArrayProperty(args: PropertyFactoryArgs): Property | undefined {
+	private static createArrayProperty(args: PropertyTypeFactoryArgs): PropertyType | undefined {
 		if (args.typechecker.isArrayLikeType(args.type)) {
 			const arrayType: ts.GenericType = args.type as ts.GenericType;
 
@@ -121,15 +140,14 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createBooleanProperty(args: PropertyFactoryArgs): Property | undefined {
+	private static createBooleanPropertyType(
+		args: PropertyTypeFactoryArgs
+	): BooleanPropertyType | undefined {
 		if (
 			(args.type.flags & ts.TypeFlags.BooleanLiteral) === ts.TypeFlags.BooleanLiteral ||
 			(args.type.symbol && args.type.symbol.name === 'Boolean')
 		) {
-			const booleanPropertyType = new BooleanPropertyType();
-			const property = new Property(args.symbol.name);
-			property.addSupportedType(booleanPropertyType);
-			return property;
+			return new BooleanPropertyType();
 		}
 
 		return;
@@ -142,7 +160,9 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createEnumProperty(args: PropertyFactoryArgs): Property | undefined {
+	private static createEnumPropertyType(
+		args: PropertyTypeFactoryArgs
+	): EnumPropertyType | undefined {
 		if (args.type.flags & ts.TypeFlags.EnumLiteral) {
 			if (!(args.type.symbol && args.type.symbol.flags & ts.SymbolFlags.EnumMember)) {
 				return;
@@ -173,9 +193,7 @@ export class PropertyAnalyzer {
 
 			const enumPropertyType = new EnumPropertyType(enumDeclaration.name.getText());
 			enumPropertyType.setOptions(options);
-			const property = new Property(args.symbol.name);
-			property.addSupportedType(enumPropertyType);
-			return property;
+			return enumPropertyType;
 		}
 
 		return;
@@ -188,12 +206,11 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createNumberProperty(args: PropertyFactoryArgs): Property | undefined {
+	private static createNumberPropertyType(
+		args: PropertyTypeFactoryArgs
+	): NumberPropertyType | undefined {
 		if ((args.type.flags & ts.TypeFlags.Number) === ts.TypeFlags.Number) {
-			const numberPropertyType = new NumberPropertyType();
-			const property = new Property(args.symbol.name);
-			property.addSupportedType(numberPropertyType);
-			return property;
+			return new NumberPropertyType();
 		}
 
 		return;
@@ -206,7 +223,9 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createObjectProperty(args: PropertyFactoryArgs): Property | undefined {
+	private static createObjectPropertyType(
+		args: PropertyTypeFactoryArgs
+	): ObjectPropertyType | undefined {
 		if (args.type.flags & ts.TypeFlags.Object) {
 			const objectType = args.type as ts.ObjectType;
 
@@ -215,12 +234,10 @@ export class PropertyAnalyzer {
 				const typeName = typeSymbol && typeSymbol.name;
 
 				const objectPropertyType = new ObjectPropertyType(typeName);
-				const property = new Property(args.symbol.name);
 				objectPropertyType.setPropertyResolver(() =>
 					PropertyAnalyzer.analyze(args.type, args.typechecker)
 				);
-				property.addSupportedType(objectPropertyType);
-				return property;
+				return objectPropertyType;
 			}
 		}
 
@@ -234,19 +251,15 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createStringProperty(args: PropertyFactoryArgs): Property | undefined {
+	private static createStringPropertyType(
+		args: PropertyTypeFactoryArgs
+	): StringPropertyType | undefined {
 		if ((args.type.flags & ts.TypeFlags.String) === ts.TypeFlags.String) {
-			const property = new Property(args.symbol.name);
-
 			if (PropertyAnalyzer.getJsDocValueFromSymbol(args.symbol, 'asset') !== undefined) {
-				const assetPropertyType = new AssetPropertyType();
-				property.addSupportedType(assetPropertyType);
+				return new AssetPropertyType();
 			} else {
-				const stringPropertyType = new StringPropertyType();
-				property.addSupportedType(stringPropertyType);
+				return new StringPropertyType();
 			}
-
-			return property;
 		}
 
 		return;
