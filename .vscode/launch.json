@@ -11,9 +11,9 @@
 			"port": 9222,
 			"webRoot": "${workspaceFolder}",
 			"windows": {
-				"url": "${workspaceFolder}\\build\\electron\\renderer\\app.html"
+				"url": "${workspaceFolder}\\build\\electron\\app.html"
 			},
-			"url": "${workspaceFolder}/build/electron/renderer/app.html"
+			"url": "${workspaceFolder}/build/electron/app.html"
 		},
 		{
 			"type": "chrome",
