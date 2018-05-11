@@ -1,7 +1,9 @@
 import { Property } from './property';
+import { PropertyType } from './property-type';
 
 export type PropertyResolver = () => Property[];
 
+// TODO: ADAPT DOCUMENTATION
 /**
  * An object property is a property that supports objects with nested property values.
  * The properties field declares the types of each object element.
@@ -9,7 +11,7 @@ export type PropertyResolver = () => Property[];
  * @see Property
  * @see PatternProperty
  */
-export class ObjectProperty extends Property {
+export class ObjectPropertyType extends PropertyType {
 	/**
 	 * The nested properties this property supports in its object values.
 	 */
@@ -22,8 +24,8 @@ export class ObjectProperty extends Property {
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor(id: string) {
-		super(id);
+	public constructor(name?: string) {
+		super('object', name);
 	}
 
 	/**
@@ -55,13 +57,6 @@ export class ObjectProperty extends Property {
 		return this.resolveProperties().get(id);
 	}
 
-	/**
-	 * @inheritdoc
-	 */
-	public getType(): string {
-		return 'object';
-	}
-
 	private resolveProperties(): Map<string, Property> {
 		if (!this.properties) {
 			if (!this.propertyResolver) {
@@ -86,12 +81,5 @@ export class ObjectProperty extends Property {
 	 */
 	public setPropertyResolver(propertyResolver: PropertyResolver): void {
 		this.propertyResolver = propertyResolver;
-	}
-
-	/**
-	 * @inheritdoc
-	 */
-	public toString(): string {
-		return `ObjectProperty(${super.toString()})`;
 	}
 }

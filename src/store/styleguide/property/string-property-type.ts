@@ -1,4 +1,4 @@
-import { Property } from './property';
+import { PropertyType } from './property-type';
 
 /**
  * A string property is a property that supports text only.
@@ -7,7 +7,7 @@ import { Property } from './property';
  * but everything is converted into a proper string (never undefined or null).
  * @see Property
  */
-export class StringProperty extends Property {
+export class StringPropertyType extends PropertyType {
 	/**
 	 * The ID of the synthetic string property in the synthetic text content pattern.
 	 */
@@ -18,8 +18,8 @@ export class StringProperty extends Property {
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor(id: string) {
-		super(id);
+	public constructor() {
+		super('string');
 	}
 
 	/**
@@ -32,19 +32,5 @@ export class StringProperty extends Property {
 		} else {
 			return String(value);
 		}
-	}
-
-	/**
-	 * @inheritdoc
-	 */
-	public getType(): string {
-		return 'string';
-	}
-
-	/**
-	 * @inheritdoc
-	 */
-	public toString(): string {
-		return `StringProperty(${super.toString()})`;
 	}
 }

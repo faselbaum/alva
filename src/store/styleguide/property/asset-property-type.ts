@@ -2,8 +2,9 @@ import * as Fs from 'fs';
 import * as fetch from 'isomorphic-fetch';
 import * as MimeTypes from 'mime-types';
 import * as Path from 'path';
-import { Property } from './property';
+import { PropertyType } from './property-type';
 
+// TODO: ADAPT DOCUMENTATION
 /**
  * An asset property is a property that takes an uploaded file (e.g. an image)
  * as a data-URL string to output it as src of an img tag or alike.
@@ -16,7 +17,7 @@ import { Property } from './property';
  * @see AssetProperty.getValueFromBuffer
  * @see AssetProperty.getValueFromUrl
  */
-export class AssetProperty extends Property {
+export class AssetPropertyType extends PropertyType {
 	/**
 	 * The ID of the synthetic string property in the synthetic asset content pattern.
 	 */
@@ -27,8 +28,8 @@ export class AssetProperty extends Property {
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor(id: string) {
-		super(id);
+	public constructor() {
+		super('asset');
 	}
 
 	/**
@@ -76,7 +77,7 @@ export class AssetProperty extends Property {
 
 		// tslint:disable-next-line:no-any
 		const buffer: Buffer = await (response as any).buffer();
-		return AssetProperty.getValueFromBuffer(buffer, mimeType);
+		return AssetPropertyType.getValueFromBuffer(buffer, mimeType);
 	}
 
 	/**
@@ -89,19 +90,5 @@ export class AssetProperty extends Property {
 		}
 
 		return undefined;
-	}
-
-	/**
-	 * @inheritdoc
-	 */
-	public getType(): string {
-		return 'asset';
-	}
-
-	/**
-	 * @inheritdoc
-	 */
-	public toString(): string {
-		return `AssetProperty(${super.toString()})`;
 	}
 }

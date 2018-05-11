@@ -544,7 +544,7 @@ export class PageElement {
 			}
 		}
 
-		const coercedValue = property ? property.coerceValue(value) : value;
+		const coercedValue = property ? property.getSupportedTypes()[0].coerceValue(value) : value;
 		if (path) {
 			const rootPropertyValue = this.propertyValues.get(id) || {};
 			ObjectPath.set<{}, PropertyValue>(rootPropertyValue, path, coercedValue);
@@ -584,7 +584,7 @@ export class PageElement {
 				const pattern: Pattern | undefined = this.getPattern();
 				const property: Property | undefined = pattern ? pattern.getProperty(key) : undefined;
 				if (property) {
-					value = property.convertToRender(value);
+					value = property.getSupportedTypes()[0].convertToRender(value);
 				}
 			}
 

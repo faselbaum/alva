@@ -1,14 +1,12 @@
 // tslint:disable:no-bitwise
 
-import { AssetProperty } from '../../../store/styleguide/property/asset-property';
-import { BooleanProperty } from '../../../store/styleguide/property/boolean-property';
-import { EnumProperty, Option } from '../../../store/styleguide/property/enum-property';
-import { NumberArrayProperty } from '../../../store/styleguide/property/number-array-property';
-import { NumberProperty } from '../../../store/styleguide/property/number-property';
-import { ObjectProperty } from '../../../store/styleguide/property/object-property';
+import { AssetPropertyType } from '../../../store/styleguide/property/asset-property-type';
+import { BooleanPropertyType } from '../../../store/styleguide/property/boolean-property-type';
+import { EnumPropertyType, Option } from '../../../store/styleguide/property/enum-property-type';
+import { NumberPropertyType } from '../../../store/styleguide/property/number-property-type';
+import { ObjectPropertyType } from '../../../store/styleguide/property/object-property-type';
 import { Property } from '../../../store/styleguide/property/property';
-import { StringArrayProperty } from '../../../store/styleguide/property/string-array-property';
-import { StringProperty } from '../../../store/styleguide/property/string-property';
+import { StringPropertyType } from '../../../store/styleguide/property/string-property-type';
 import * as ts from 'typescript';
 import { TypescriptUtils } from '../typescript/typescript-utils';
 
@@ -110,16 +108,7 @@ export class PropertyAnalyzer {
 			}
 
 			const itemType = arrayType.typeArguments[0];
-
-			if ((itemType.flags & ts.TypeFlags.String) === ts.TypeFlags.String) {
-				const property = new StringArrayProperty(args.symbol.name);
-				return property;
-			}
-
-			if ((itemType.flags & ts.TypeFlags.Number) === ts.TypeFlags.Number) {
-				const property = new NumberArrayProperty(args.symbol.name);
-				return property;
-			}
+			console.log('Found array type with item type: ', itemType);
 		}
 
 		return;
@@ -132,12 +121,15 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createBooleanProperty(args: PropertyFactoryArgs): BooleanProperty | undefined {
+	private static createBooleanProperty(args: PropertyFactoryArgs): Property | undefined {
 		if (
 			(args.type.flags & ts.TypeFlags.BooleanLiteral) === ts.TypeFlags.BooleanLiteral ||
 			(args.type.symbol && args.type.symbol.name === 'Boolean')
 		) {
-			return new BooleanProperty(args.symbol.name);
+			const booleanPropertyType = new BooleanPropertyType();
+			const property = new Property(args.symbol.name);
+			property.addSupportedType(booleanPropertyType);
+			return property;
 		}
 
 		return;
@@ -150,7 +142,7 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createEnumProperty(args: PropertyFactoryArgs): EnumProperty | undefined {
+	private static createEnumProperty(args: PropertyFactoryArgs): Property | undefined {
 		if (args.type.flags & ts.TypeFlags.EnumLiteral) {
 			if (!(args.type.symbol && args.type.symbol.flags & ts.SymbolFlags.EnumMember)) {
 				return;
@@ -179,8 +171,10 @@ export class PropertyAnalyzer {
 				return new Option(enumMemberId, enumMemberName, enumMemberOrdinal);
 			});
 
-			const property = new EnumProperty(args.symbol.name);
-			property.setOptions(options);
+			const enumPropertyType = new EnumPropertyType(enumDeclaration.name.getText());
+			enumPropertyType.setOptions(options);
+			const property = new Property(args.symbol.name);
+			property.addSupportedType(enumPropertyType);
 			return property;
 		}
 
@@ -194,9 +188,12 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createNumberProperty(args: PropertyFactoryArgs): NumberProperty | undefined {
+	private static createNumberProperty(args: PropertyFactoryArgs): Property | undefined {
 		if ((args.type.flags & ts.TypeFlags.Number) === ts.TypeFlags.Number) {
-			return new NumberProperty(args.symbol.name);
+			const numberPropertyType = new NumberPropertyType();
+			const property = new Property(args.symbol.name);
+			property.addSupportedType(numberPropertyType);
+			return property;
 		}
 
 		return;
@@ -209,15 +206,20 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createObjectProperty(args: PropertyFactoryArgs): ObjectProperty | undefined {
+	private static createObjectProperty(args: PropertyFactoryArgs): Property | undefined {
 		if (args.type.flags & ts.TypeFlags.Object) {
 			const objectType = args.type as ts.ObjectType;
 
 			if (objectType.objectFlags & ts.ObjectFlags.Interface) {
-				const property = new ObjectProperty(args.symbol.name);
-				property.setPropertyResolver(() =>
+				const typeSymbol = args.type.aliasSymbol || args.type.symbol;
+				const typeName = typeSymbol && typeSymbol.name;
+
+				const objectPropertyType = new ObjectPropertyType(typeName);
+				const property = new Property(args.symbol.name);
+				objectPropertyType.setPropertyResolver(() =>
 					PropertyAnalyzer.analyze(args.type, args.typechecker)
 				);
+				property.addSupportedType(objectPropertyType);
 				return property;
 			}
 		}
@@ -232,13 +234,19 @@ export class PropertyAnalyzer {
 	 * checker.
 	 * @return The Alva-supported property or undefined, if the symbol is not supported.
 	 */
-	private static createStringProperty(args: PropertyFactoryArgs): StringProperty | undefined {
+	private static createStringProperty(args: PropertyFactoryArgs): Property | undefined {
 		if ((args.type.flags & ts.TypeFlags.String) === ts.TypeFlags.String) {
+			const property = new Property(args.symbol.name);
+
 			if (PropertyAnalyzer.getJsDocValueFromSymbol(args.symbol, 'asset') !== undefined) {
-				return new AssetProperty(args.symbol.name);
+				const assetPropertyType = new AssetPropertyType();
+				property.addSupportedType(assetPropertyType);
 			} else {
-				return new StringProperty(args.symbol.name);
+				const stringPropertyType = new StringPropertyType();
+				property.addSupportedType(stringPropertyType);
 			}
+
+			return property;
 		}
 
 		return;

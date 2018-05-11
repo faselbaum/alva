@@ -1,5 +1,5 @@
 import { PatternFolder } from './folder';
-import { ObjectProperty } from './property/object-property';
+import { ObjectPropertyType } from './property/object-property-type';
 import { Property } from './property/property';
 import { Slot } from './slot';
 import { Store } from '../store';
@@ -176,8 +176,8 @@ export class Pattern {
 		}
 
 		for (const part of path.split('.')) {
-			if (property && property.getType() === 'object') {
-				property = (property as ObjectProperty).getProperty(part);
+			if (property && property.getSupportedTypes()[0].getId() === 'object') {
+				property = (property.getSupportedTypes()[0] as ObjectPropertyType).getProperty(part);
 			} else {
 				return;
 			}

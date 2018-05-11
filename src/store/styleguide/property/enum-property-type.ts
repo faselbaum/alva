@@ -1,5 +1,6 @@
-import { Property } from './property';
+import { PropertyType } from './property-type';
 
+// TODO: ADAPT DOCUMENTATION
 /**
  * An enum property is a property that supports the elements of a given enum only, and undefined.
  * As designer content value (raw value), the property accepts the option ID (JavaScript name),
@@ -9,7 +10,7 @@ import { Property } from './property';
  * as this is the runtime equivalent.
  * @see Property
  */
-export class EnumProperty extends Property {
+export class EnumPropertyType extends PropertyType {
 	/**
 	 * The options supported by this enum.
 	 */
@@ -25,8 +26,8 @@ export class EnumProperty extends Property {
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor(id: string) {
-		super(id);
+	public constructor(name?: string) {
+		super('enum', name);
 	}
 
 	/**
@@ -91,13 +92,6 @@ export class EnumProperty extends Property {
 		return this.options;
 	}
 
-	// tslint:disable-next-line:no-any
-	protected getToStringProperties(): [string, any][] {
-		const result = super.getToStringProperties();
-		result.push(['options', this.options]);
-		return result;
-	}
-
 	/**
 	 * @inheritdoc
 	 */
@@ -115,13 +109,6 @@ export class EnumProperty extends Property {
 		this.options.forEach((option: Option) => {
 			this.ordinalById[option.getId()] = option.getOrdinal();
 		});
-	}
-
-	/**
-	 * @inheritdoc
-	 */
-	public toString(): string {
-		return `EnumProperty(${super.toString()})`;
 	}
 }
 

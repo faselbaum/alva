@@ -1,3 +1,4 @@
+import { PropertyType } from './property-type';
 import { Store } from '../../../store/store';
 
 /**
@@ -8,7 +9,7 @@ import { Store } from '../../../store/store';
  * @see PageElement
  * @see PatternParser
  */
-export abstract class Property {
+export class Property {
 	/**
 	 * The default value of the property when creating a new page element.
 	 * This is the Alva default (such as "Lorem Ipsum"), not the default for production component
@@ -40,6 +41,9 @@ export abstract class Property {
 	 */
 	private required: boolean = false;
 
+	// TODO: DOCUMENT
+	private supportedTypes: Map<string, PropertyType> = new Map();
+
 	/**
 	 * Creates a new property.
 	 * @param id The technical ID of this property (e.g. the property name in the TypeScript
@@ -50,88 +54,9 @@ export abstract class Property {
 		this.name = Store.guessName(id);
 	}
 
-	/**
-	 * Returns whether two given values are arrays and their content is the same (shallow equal).
-	 * @param value1 The first array candidate.
-	 * @param value2 The first array candidate.
-	 */
-	// tslint:disable-next-line:no-any
-	protected arraysAndEqual(value1: any, value2: any): boolean {
-		if (!(value1 instanceof Array) || !(value2 instanceof Array)) {
-			return false;
-		}
-
-		// tslint:disable-next-line:no-any
-		const array1: any[] = value1;
-		// tslint:disable-next-line:no-any
-		const array2: any[] = value2;
-		if (array1.length !== array2.length) {
-			return false;
-		}
-
-		for (let i = 0; i < array1.length; i++) {
-			if (array1[i] !== array2[i]) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * Tries to convert a given value of any type, maybe array, into an array with elements
-	 * of a required type, using a given coercion function.
-	 * E.g., for boolean properties, "true" and ["true"] are coerced into [true].
-	 * See Property sub-classes documentation for a description of allowed raw values
-	 * and their conversion.
-	 * @param value The raw value, maybe an array.
-	 * @param elementCoercion The coercion function.
-	 * @return The resulting, property-compatible array.
-	 */
-	// tslint:disable-next-line:no-any
-	protected coerceArrayValue(value: any, elementCoercion: (value: any) => any): any {
-		// tslint:disable-next-line:no-any
-		let result: any[];
-		if (value instanceof Array) {
-			result = value;
-		} else {
-			result = [value];
-		}
-
-		// tslint:disable-next-line:no-any
-		result = value.filter(
-			// tslint:disable-next-line:no-any
-			(element: any) => value !== null && value !== undefined && value !== ''
-		);
-
-		// tslint:disable-next-line:no-any
-		result = result.map(elementCoercion);
-
-		// Ensure that unmodified arrays stay the same
-		return this.arraysAndEqual(value, result) ? value : result;
-	}
-
-	/**
-	 * Tries to convert a given value of any type into the required type of a property.
-	 * E.g., for boolean properties, "true" is coerced into true.
-	 * See Property sub-classes documentation for a description of allowed raw values
-	 * and their conversion.
-	 * @param value The raw value.
-	 * @param callback A callback to be called with the resulting, property-compatible value.
-	 */
-	// tslint:disable-next-line:no-any
-	public abstract coerceValue(value: any): any;
-
-	/**
-	 * Converts a given value into the form required by the component's props' property.
-	 * Usually, this is the current value itself, but sometimes, e.g. for enums,
-	 * it requires a conversion.
-	 * @param value The original value.
-	 * @return The value compatible to the component's props' property.
-	 */
-	// tslint:disable-next-line:no-any
-	public convertToRender(value: any): any {
-		return value;
+	// TODO: DOCUMENT
+	public addSupportedType(type: PropertyType): void {
+		this.supportedTypes.set(type.getId(), type);
 	}
 
 	/**
@@ -163,6 +88,11 @@ export abstract class Property {
 		return this.name;
 	}
 
+	// TODO: DOCUMENT
+	public getSupportedTypes(): PropertyType[] {
+		return Array.from(this.supportedTypes.values());
+	}
+
 	// tslint:disable-next-line:no-any
 	protected getToStringProperties(): [string, any][] {
 		return [
@@ -173,12 +103,10 @@ export abstract class Property {
 		];
 	}
 
-	/**
-	 * Returns the type ID of this property, a reflection of the sub-class, or easier case-switching.
-	 * E.g. "boolean" for the BooleanProperty type.
-	 * @return The type ID of this property.
-	 */
-	public abstract getType(): string;
+	// TODO: DOCUMENT
+	public getType(id: string): PropertyType | undefined {
+		return this.supportedTypes.get(id);
+	}
 
 	/**
 	 * Returns whether this property is marked as hidden in Alva (exists in the pattern, but the designer

@@ -1,8 +1,9 @@
-import { AssetProperty } from './property/asset-property';
+import { AssetPropertyType } from './property/asset-property-type';
 import { Directory } from '../../styleguide/analyzer/directory';
 import { PatternFolder } from './folder';
 import { Pattern } from './pattern';
-import { StringProperty } from './property/string-property';
+import { Property } from './property/property';
+import { StringPropertyType } from './property/string-property-type';
 import { StyleguideAnalyzer } from '../../styleguide/analyzer/styleguide-analyzer';
 
 export enum SyntheticPatternType {
@@ -80,12 +81,18 @@ export class Styleguide {
 		this.addPattern(pagePattern);
 
 		const textPattern = new Pattern(SyntheticPatternType.Text, 'Text', '');
-		textPattern.addProperty(new StringProperty(StringProperty.SYNTHETIC_TEXT_ID));
+		const stringPropertyType = new StringPropertyType();
+		const textProperty = new Property(StringPropertyType.SYNTHETIC_TEXT_ID);
+		textProperty.addSupportedType(stringPropertyType);
+		textPattern.addProperty(textProperty);
 		folder.addPattern(textPattern);
 		this.addPattern(textPattern);
 
 		const assetPattern = new Pattern(SyntheticPatternType.Placeholder, 'Placeholder', '');
-		assetPattern.addProperty(new AssetProperty(AssetProperty.SYNTHETIC_ASSET_ID));
+		const assetPropertyType = new AssetPropertyType();
+		const assetProperty = new Property(AssetPropertyType.SYNTHETIC_ASSET_ID);
+		assetProperty.addSupportedType(assetPropertyType);
+		assetPattern.addProperty(assetProperty);
 		folder.addPattern(assetPattern);
 		this.addPattern(assetPattern);
 

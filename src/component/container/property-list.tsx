@@ -1,14 +1,15 @@
 import { AssetItem } from '../../lsg/patterns/property-items/asset-item';
-import { AssetProperty } from '../../store/styleguide/property/asset-property';
+import { AssetPropertyType } from '../../store/styleguide/property/asset-property-type';
 import { BooleanItem } from '../../lsg/patterns/property-items/boolean-item';
 import { remote } from 'electron';
 import Element from '../../lsg/patterns/element';
 import { EnumItem, Values } from '../../lsg/patterns/property-items/enum-item';
-import { EnumProperty, Option } from '../../store/styleguide/property/enum-property';
+import { EnumPropertyType, Option } from '../../store/styleguide/property/enum-property-type';
 import * as MobX from 'mobx';
 import { observer } from 'mobx-react';
-import { ObjectProperty } from '../../store/styleguide/property/object-property';
+import { ObjectPropertyType } from '../../store/styleguide/property/object-property-type';
 import { PageElement } from '../../store/page/page-element';
+import { Property } from '../../store/styleguide/property/property';
 import { PropertyItem } from '../../lsg/patterns/property-item';
 import { PropertyValue } from '../../store/page/property-value';
 import { PropertyValueCommand } from '../../store/command/property-value-command';
@@ -18,7 +19,8 @@ import { StringItem } from '../../lsg/patterns/property-items/string-item';
 
 interface ObjectContext {
 	path: string;
-	property: ObjectProperty;
+	property: Property;
+	propertyType: ObjectPropertyType;
 }
 
 interface PropertyTreeProps {
@@ -71,7 +73,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 			},
 			filePaths => {
 				if (filePaths && filePaths.length) {
-					const dataUrl = AssetProperty.getValueFromFile(filePaths[0]);
+					const dataUrl = AssetPropertyType.getValueFromFile(filePaths[0]);
 					this.handleChange(id, dataUrl, context);
 				}
 			}
@@ -108,7 +110,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 		const pattern = element.getPattern();
 
 		const properties = context
-			? context.property.getProperties()
+			? context.propertyType.getProperties()
 			: pattern && pattern.getProperties();
 
 		if (!properties) {
@@ -120,13 +122,13 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 				{properties.map(property => {
 					const id = property.getId();
 					const name = property.getName();
-					const type = property.getType();
+					const type = property.getSupportedTypes()[0];
 					const value = this.getValue(id, context && context.path);
 
 					const propTypes = [
 						{
-							id: type,
-							name: type
+							id: type.getId(),
+							name: type.getName()
 						},
 						{
 							id: 'yolo',
@@ -138,7 +140,7 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 						}
 					];
 
-					switch (type) {
+					switch (type.getId()) {
 						case 'boolean':
 							return (
 								<PropertyItem
@@ -173,8 +175,8 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 							);
 
 						case 'enum':
-							const options = (property as EnumProperty).getOptions();
-							const option: Option | undefined = (property as EnumProperty).getOptionById(
+							const options = (type as EnumPropertyType).getOptions();
+							const option: Option | undefined = (type as EnumPropertyType).getOptionById(
 								value as string
 							);
 
@@ -217,12 +219,13 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 							);
 
 						case 'object':
-							const objectProperty = property as ObjectProperty;
+							const objectPropertyType = type as ObjectPropertyType;
 							const newPath = (context && `${context.path}.${id}`) || id;
 
 							const newContext: ObjectContext = {
 								path: newPath,
-								property: objectProperty
+								property,
+								propertyType: objectPropertyType
 							};
 
 							return (
