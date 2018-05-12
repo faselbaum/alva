@@ -5,25 +5,21 @@ import { Property } from '../styleguide/property/property';
 import { PropertyValue } from './property-value';
 
 export class PropertyValueProxy {
-	private property: Property;
+	private property: Property | undefined;
 
-	@MobX.observable private propertyValues: Map<string, PropertyValue> = new Map();
+	@MobX.observable private propertyValues: Map<string | undefined, PropertyValue> = new Map();
 
 	@MobX.observable private selectedTypeId: string | undefined;
 
-	public constructor(property: Property) {
-		this.property = property;
-	}
-
-	public getProperty(): Property {
+	public getProperty(): Property | undefined {
 		return this.property;
 	}
 
-	public getSelectedType(): string | undefined {
+	public getSelectedTypeId(): string | undefined {
 		return this.selectedTypeId;
 	}
 
-	public getValue(typeId: string, path?: string): PropertyValue {
+	public getValue(typeId: string, path: string): PropertyValue {
 		const value: PropertyValue = this.propertyValues.get(typeId);
 
 		if (!path) {
@@ -33,13 +29,25 @@ export class PropertyValueProxy {
 		return ObjectPath.get(value as {}, path);
 	}
 
-	public setSelectedType(typeId: string | undefined): void {
+	public setProperty(property?: Property): void {
+		this.property = property;
+	}
+
+	public setSelectedTypeId(typeId: string | undefined): void {
 		this.selectedTypeId = typeId;
 	}
 
 	// tslint:disable-next-line:no-any
-	public setValue(typeId: string, value: any, path?: string): void {
-		const coercedValue = this.property.getSupportedTypes()[typeId].coerceValue(value);
+	public setValue(value: any, typeId: string, path: string): void {
+		// tslint:disable-next-line:no-any
+		let coercedValue: any;
+
+		if (this.property && typeId) {
+			coercedValue = this.property.getSupportedTypes()[typeId].coerceValue(value);
+		} else {
+			coercedValue = value;
+		}
+
 		if (path) {
 			const rootPropertyValue = this.propertyValues.get(typeId) || {};
 			ObjectPath.set<{}, PropertyValue>(rootPropertyValue, path, coercedValue);
