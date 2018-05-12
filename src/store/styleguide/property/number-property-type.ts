@@ -9,13 +9,23 @@ import { PropertyType } from './property-type';
  * @see Property
  */
 export class NumberPropertyType extends PropertyType {
+	protected static instance: NumberPropertyType | undefined;
+
 	/**
 	 * Creates a new number property.
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor() {
+	protected constructor() {
 		super('number');
+	}
+
+	public static getInstance(): NumberPropertyType {
+		if (!this.instance) {
+			this.instance = new NumberPropertyType();
+		}
+
+		return this.instance;
 	}
 
 	/**

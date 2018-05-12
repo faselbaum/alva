@@ -8,13 +8,23 @@ import { PropertyType } from './property-type';
  * @see Property
  */
 export class BooleanPropertyType extends PropertyType {
+	protected static instance: BooleanPropertyType | undefined;
+
 	/**
 	 * Creates a new boolean property.
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor() {
+	protected constructor() {
 		super('boolean');
+	}
+
+	public static getInstance(): BooleanPropertyType {
+		if (!this.instance) {
+			this.instance = new BooleanPropertyType();
+		}
+
+		return this.instance;
 	}
 
 	/**

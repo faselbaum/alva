@@ -26,8 +26,8 @@ export class EnumPropertyType extends PropertyType {
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor(name?: string) {
-		super('enum', name);
+	public constructor(id: string, name?: string) {
+		super(`enum-${id}`, name);
 	}
 
 	/**

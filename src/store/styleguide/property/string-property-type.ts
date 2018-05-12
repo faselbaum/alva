@@ -8,6 +8,8 @@ import { PropertyType } from './property-type';
  * @see Property
  */
 export class StringPropertyType extends PropertyType {
+	protected static instance: StringPropertyType | undefined;
+
 	/**
 	 * The ID of the synthetic string property in the synthetic text content pattern.
 	 */
@@ -18,8 +20,16 @@ export class StringPropertyType extends PropertyType {
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor() {
+	protected constructor() {
 		super('string');
+	}
+
+	public static getInstance(): StringPropertyType {
+		if (!this.instance) {
+			this.instance = new StringPropertyType();
+		}
+
+		return this.instance;
 	}
 
 	/**

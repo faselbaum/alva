@@ -147,7 +147,7 @@ export class PropertyAnalyzer {
 			(args.type.flags & ts.TypeFlags.BooleanLiteral) === ts.TypeFlags.BooleanLiteral ||
 			(args.type.symbol && args.type.symbol.name === 'Boolean')
 		) {
-			return new BooleanPropertyType();
+			return BooleanPropertyType.getInstance();
 		}
 
 		return;
@@ -191,7 +191,10 @@ export class PropertyAnalyzer {
 				return new Option(enumMemberId, enumMemberName, enumMemberOrdinal);
 			});
 
-			const enumPropertyType = new EnumPropertyType(enumDeclaration.name.getText());
+			const enumPropertyType = new EnumPropertyType(
+				enumDeclaration.name.getText(),
+				enumDeclaration.name.getText()
+			);
 			enumPropertyType.setOptions(options);
 			return enumPropertyType;
 		}
@@ -210,7 +213,7 @@ export class PropertyAnalyzer {
 		args: PropertyTypeFactoryArgs
 	): NumberPropertyType | undefined {
 		if ((args.type.flags & ts.TypeFlags.Number) === ts.TypeFlags.Number) {
-			return new NumberPropertyType();
+			return NumberPropertyType.getInstance();
 		}
 
 		return;
@@ -233,7 +236,10 @@ export class PropertyAnalyzer {
 				const typeSymbol = args.type.aliasSymbol || args.type.symbol;
 				const typeName = typeSymbol && typeSymbol.name;
 
-				const objectPropertyType = new ObjectPropertyType(typeName);
+				const objectPropertyType = new ObjectPropertyType(
+					typeName || Math.random().toString(),
+					typeName
+				);
 				objectPropertyType.setPropertyResolver(() =>
 					PropertyAnalyzer.analyze(args.type, args.typechecker)
 				);
@@ -256,9 +262,9 @@ export class PropertyAnalyzer {
 	): StringPropertyType | undefined {
 		if ((args.type.flags & ts.TypeFlags.String) === ts.TypeFlags.String) {
 			if (PropertyAnalyzer.getJsDocValueFromSymbol(args.symbol, 'asset') !== undefined) {
-				return new AssetPropertyType();
+				return AssetPropertyType.getInstance();
 			} else {
-				return new StringPropertyType();
+				return StringPropertyType.getInstance();
 			}
 		}
 

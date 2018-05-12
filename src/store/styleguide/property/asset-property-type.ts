@@ -18,6 +18,8 @@ import { PropertyType } from './property-type';
  * @see AssetProperty.getValueFromUrl
  */
 export class AssetPropertyType extends PropertyType {
+	protected static instance: AssetPropertyType | undefined;
+
 	/**
 	 * The ID of the synthetic string property in the synthetic asset content pattern.
 	 */
@@ -28,8 +30,16 @@ export class AssetPropertyType extends PropertyType {
 	 * @param id The technical ID of this property (e.g. the property name
 	 * in the TypeScript props interface).
 	 */
-	public constructor() {
+	protected constructor() {
 		super('asset');
+	}
+
+	public static getInstance(): AssetPropertyType {
+		if (!this.instance) {
+			this.instance = new AssetPropertyType();
+		}
+
+		return this.instance;
 	}
 
 	/**

@@ -81,17 +81,15 @@ export class Styleguide {
 		this.addPattern(pagePattern);
 
 		const textPattern = new Pattern(SyntheticPatternType.Text, 'Text', '');
-		const stringPropertyType = new StringPropertyType();
 		const textProperty = new Property(StringPropertyType.SYNTHETIC_TEXT_ID);
-		textProperty.addSupportedType(stringPropertyType);
+		textProperty.addSupportedType(StringPropertyType.getInstance());
 		textPattern.addProperty(textProperty);
 		folder.addPattern(textPattern);
 		this.addPattern(textPattern);
 
 		const assetPattern = new Pattern(SyntheticPatternType.Placeholder, 'Placeholder', '');
-		const assetPropertyType = new AssetPropertyType();
 		const assetProperty = new Property(AssetPropertyType.SYNTHETIC_ASSET_ID);
-		assetProperty.addSupportedType(assetPropertyType);
+		assetProperty.addSupportedType(AssetPropertyType.getInstance());
 		assetPattern.addProperty(assetProperty);
 		folder.addPattern(assetPattern);
 		this.addPattern(assetPattern);

@@ -1,6 +1,7 @@
 import { AssetItem } from '../../lsg/patterns/property-items/asset-item';
 import { AssetPropertyType } from '../../store/styleguide/property/asset-property-type';
 import { BooleanItem } from '../../lsg/patterns/property-items/boolean-item';
+import { BooleanPropertyType } from '../../store/styleguide/property/boolean-property-type';
 import { remote } from 'electron';
 import Element from '../../lsg/patterns/element';
 import { EnumItem, Values } from '../../lsg/patterns/property-items/enum-item';
@@ -16,6 +17,7 @@ import { PropertyValueCommand } from '../../store/command/property-value-command
 import * as React from 'react';
 import { Store } from '../../store/store';
 import { StringItem } from '../../lsg/patterns/property-items/string-item';
+import { StringPropertyType } from '../../store/styleguide/property/string-property-type';
 
 interface ObjectContext {
 	path: string;
@@ -117,130 +119,89 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 			return <div>This element has no properties</div>;
 		}
 
+		return <>{properties.map(property => this.renderProperty(property, element, context))}</>;
+	}
+
+	protected renderProperty(
+		property: Property,
+		element: PageElement,
+		context?: ObjectContext
+	): React.ReactNode {
+		const id = property.getId();
+		const name = property.getName();
+		const type = property.getSupportedTypes()[0];
+		const value = this.getValue(id, context && context.path);
+
+		const propTypes = property.getSupportedTypes().map(supportedType => ({
+			id: supportedType.getId(),
+			name: supportedType.getName()
+		}));
+
+		let propertyControl: React.ReactNode;
+
+		if (type instanceof BooleanPropertyType) {
+			propertyControl = (
+				<BooleanItem
+					checked={value as boolean}
+					onChange={event => this.handleChange(id, !value, context)}
+				/>
+			);
+		} else if (type instanceof StringPropertyType) {
+			propertyControl = (
+				<StringItem
+					value={value as string}
+					onChange={event => this.handleChange(id, event.currentTarget.value, context)}
+					onBlur={event => this.handleBlur()}
+				/>
+			);
+		} else if (type instanceof EnumPropertyType) {
+			const options = (type as EnumPropertyType).getOptions();
+			const option: Option | undefined = (type as EnumPropertyType).getOptionById(
+				value as string
+			);
+
+			propertyControl = (
+				<EnumItem
+					selectedValue={option && option.getId()}
+					values={this.convertOptionsToValues(options)}
+					onChange={event => this.handleChange(id, event.currentTarget.value, context)}
+				/>
+			);
+		} else if (type instanceof AssetPropertyType) {
+			const src = value as string | undefined;
+			propertyControl = (
+				<AssetItem
+					inputValue={src && !src.startsWith('data:') ? src : ''}
+					imageSrc={src}
+					onInputChange={event => this.handleChange(id, event.currentTarget.value, context)}
+					onChooseClick={event => this.handleChooseAsset(id, context)}
+					onClearClick={event => this.handleChange(id, undefined, context)}
+				/>
+			);
+		} else if (type instanceof ObjectPropertyType) {
+			const objectPropertyType = type as ObjectPropertyType;
+			const newPath = (context && `${context.path}.${id}`) || id;
+
+			const newContext: ObjectContext = {
+				path: newPath,
+				property,
+				propertyType: objectPropertyType
+			};
+
+			propertyControl = <PropertyTree context={newContext} element={element} />;
+		} else {
+			propertyControl = <div key={id}>Unknown type: {type.getId()}</div>;
+		}
+
 		return (
-			<>
-				{properties.map(property => {
-					const id = property.getId();
-					const name = property.getName();
-					const type = property.getSupportedTypes()[0];
-					const value = this.getValue(id, context && context.path);
-
-					const propTypes = property.getSupportedTypes().map(supportedType => ({
-						id: supportedType.getId(),
-						name: supportedType.getName()
-					}));
-
-					switch (type.getId()) {
-						case 'boolean':
-							return (
-								<PropertyItem
-									propertyName={name}
-									selectedPropertyType={type.getId()}
-									propertyTypes={propTypes}
-								>
-									<BooleanItem
-										key={id}
-										checked={value as boolean}
-										onChange={event => this.handleChange(id, !value, context)}
-									/>
-								</PropertyItem>
-							);
-
-						case 'string':
-							return (
-								<PropertyItem
-									propertyName={name}
-									selectedPropertyType=""
-									propertyTypes={propTypes}
-								>
-									<StringItem
-										key={id}
-										value={value as string}
-										onChange={event =>
-											this.handleChange(id, event.currentTarget.value, context)
-										}
-										onBlur={event => this.handleBlur()}
-									/>
-								</PropertyItem>
-							);
-
-						case 'enum':
-							const options = (type as EnumPropertyType).getOptions();
-							const option: Option | undefined = (type as EnumPropertyType).getOptionById(
-								value as string
-							);
-
-							return (
-								<PropertyItem
-									propertyName={name}
-									selectedPropertyType=""
-									propertyTypes={propTypes}
-								>
-									<EnumItem
-										key={id}
-										selectedValue={option && option.getId()}
-										values={this.convertOptionsToValues(options)}
-										onChange={event =>
-											this.handleChange(id, event.currentTarget.value, context)
-										}
-									/>
-								</PropertyItem>
-							);
-
-						case 'asset':
-							const src = value as string | undefined;
-							return (
-								<PropertyItem
-									propertyName={name}
-									selectedPropertyType=""
-									propertyTypes={propTypes}
-								>
-									<AssetItem
-										key={id}
-										inputValue={src && !src.startsWith('data:') ? src : ''}
-										imageSrc={src}
-										onInputChange={event =>
-											this.handleChange(id, event.currentTarget.value, context)
-										}
-										onChooseClick={event => this.handleChooseAsset(id, context)}
-										onClearClick={event => this.handleChange(id, undefined, context)}
-									/>
-								</PropertyItem>
-							);
-
-						case 'object':
-							const objectPropertyType = type as ObjectPropertyType;
-							const newPath = (context && `${context.path}.${id}`) || id;
-
-							const newContext: ObjectContext = {
-								path: newPath,
-								property,
-								propertyType: objectPropertyType
-							};
-
-							return (
-								<PropertyItem
-									propertyName={name}
-									selectedPropertyType=""
-									propertyTypes={propTypes}
-								>
-									<PropertyTree key={id} context={newContext} element={element} />
-								</PropertyItem>
-							);
-
-						default:
-							return (
-								<PropertyItem
-									propertyName={name}
-									selectedPropertyType=""
-									propertyTypes={propTypes}
-								>
-									<div key={id}>Unknown type: {type}</div>
-								</PropertyItem>
-							);
-					}
-				})}
-			</>
+			<PropertyItem
+				key={id}
+				propertyName={name}
+				selectedPropertyType={type.getId()}
+				propertyTypes={propTypes}
+			>
+				{propertyControl}
+			</PropertyItem>
 		);
 	}
 }
