@@ -5,7 +5,6 @@ import * as Fs from 'fs';
 import { PropertyResolver } from '../../../store/styleguide/property/object-property-type';
 import * as Path from 'path';
 import { Pattern } from '../../../store/styleguide/pattern';
-import { Property } from '../../../store/styleguide/property/property';
 import { PropertyAnalyzer } from './property-analyzer';
 import { ReactUtils } from '../typescript/react-utils';
 import { Slot } from '../../../store/styleguide/slot';

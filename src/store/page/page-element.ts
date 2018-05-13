@@ -223,7 +223,7 @@ export class PageElement {
 			const objectValue = unwrappedValue as WrappedPropertyObjectValue;
 			const childProxy = new PropertyValueProxy();
 			childProxy.setContext(parentProxy.getContext());
-			parentProxy.setValue(propertyId, valueStore);
+			parentProxy.setValueStore(propertyId, valueStore);
 
 			Object.keys(objectValue).forEach(childPropertyId => {
 				this.loadPropertyFromJson(childPropertyId, objectValue[childPropertyId], childProxy);

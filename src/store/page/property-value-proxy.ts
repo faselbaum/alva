@@ -8,12 +8,14 @@ export interface TypedValueStoreContext {
 }
 
 export class TypedValueStore {
+	private static UNKNOWN_TYPE: string = '__unknown_type__';
+
 	private context: TypedValueStoreContext;
 
 	@MobX.observable protected selectedTypeId: string | undefined;
 
 	@MobX.observable
-	protected typedValues: Map<string | undefined, PropertyValue | PropertyValueProxy> = new Map();
+	protected typedValues: Map<string, PropertyValue | PropertyValueProxy> = new Map();
 
 	public constructor(context: TypedValueStoreContext) {
 		this.context = context;
@@ -46,8 +48,16 @@ export class TypedValueStore {
 		return this.selectedTypeId;
 	}
 
+	public getTypedValues(): ReadonlyMap<string | undefined, PropertyValue | PropertyValueProxy> {
+		return this.typedValues;
+	}
+
 	public getValue(typeId?: string): PropertyValue | PropertyValueProxy {
-		return this.typedValues.get(typeId);
+		return this.typedValues.get(this.normalizeTypeId(typeId));
+	}
+
+	protected normalizeTypeId(typeId?: string): string {
+		return typeId || TypedValueStore.UNKNOWN_TYPE;
 	}
 
 	public setContext(context: TypedValueStoreContext): void {
@@ -61,12 +71,12 @@ export class TypedValueStore {
 	// tslint:disable-next-line:no-any
 	public setValue(value: PropertyValue | PropertyValueProxy, typeId?: string): void {
 		if (typeof value === typeof undefined) {
-			this.typedValues.delete(typeId);
+			this.typedValues.delete(this.normalizeTypeId(typeId));
 			return;
 		}
 
 		if (value instanceof PropertyValueProxy) {
-			this.typedValues.set(typeId, value);
+			this.typedValues.set(this.normalizeTypeId(typeId), value);
 			return;
 		}
 
@@ -76,12 +86,12 @@ export class TypedValueStore {
 
 		if (!propertyType) {
 			console.warn('setting raw value for unknown property type');
-			this.typedValues.set(typeId, value);
+			this.typedValues.set(this.normalizeTypeId(typeId), value);
 			return;
 		}
 
 		const coercedValue = propertyType.coerceValue(value);
-		this.typedValues.set(typeId, coercedValue);
+		this.typedValues.set(this.normalizeTypeId(typeId), coercedValue);
 	}
 }
 
@@ -94,16 +104,14 @@ export class PropertyValueProxy {
 		const clone = new PropertyValueProxy();
 		clone.setContext(this.context);
 
-		Array.from(this.propertyValues).forEach(value => {
-			const [propertyId, typedValueStore] = value;
-
-			clone.setValue(
+		Array.from(this.propertyValues).forEach(propertyItem => {
+			const [propertyId, valueStore] = propertyItem;
+			const valueStoreClone = valueStore.clone({
 				propertyId,
-				typedValueStore.clone({
-					propertyId,
-					proxy: clone
-				})
-			);
+				proxy: clone
+			});
+
+			clone.setValueStore(propertyId, valueStoreClone);
 		});
 
 		return clone;
@@ -113,29 +121,63 @@ export class PropertyValueProxy {
 		return this.context;
 	}
 
-	public getTypedValueStore(propertyId: string): TypedValueStore | undefined {
-		return this.propertyValues.get(propertyId);
-	}
-
-	public getValue(propertyId: string): TypedValueStore | undefined {
-		return this.propertyValues.get(propertyId);
+	public getValue(propertyId: string, typeId: string): PropertyValue | PropertyValueProxy {
+		const valueStore = this.propertyValues.get(typeId);
+		return valueStore && valueStore.getValue(typeId);
 	}
 
 	public getValues(): ReadonlyMap<string, TypedValueStore | undefined> {
 		return this.propertyValues;
 	}
 
+	public getValueStore(propertyId: string): TypedValueStore | undefined {
+		return this.propertyValues.get(propertyId);
+	}
+
 	public setContext(context?: ObjectPropertyType): void {
 		this.context = context;
 	}
 
-	public setValue(propertyId: string, value?: TypedValueStore, typeId?: string): void {
-		if (!value) {
+	public setValue(
+		propertyId: string,
+		typeId: string,
+		value?: PropertyValue | PropertyValueProxy
+	): void {
+		let typedValueStore = this.propertyValues.get(propertyId);
+
+		if (value) {
+			if (!typedValueStore) {
+				typedValueStore = new TypedValueStore({
+					propertyId,
+					proxy: this
+				});
+
+				this.propertyValues.set(propertyId, typedValueStore);
+			}
+
+			typedValueStore.setValue(value, typeId);
+			return;
+		} else {
+			if (!typedValueStore) {
+				return;
+			}
+
+			typedValueStore.setValue(value, typeId);
+
+			// Remove store if no values are set for any of the types.
+			if (Array.from(typedValueStore.getTypedValues()).length === 0) {
+				this.propertyValues.delete(propertyId);
+			}
+		}
+	}
+
+	public setValueStore(propertyId: string, valueStore?: TypedValueStore): void {
+		if (!valueStore) {
 			this.propertyValues.delete(propertyId);
 			return;
 		}
 
-		this.propertyValues.set(propertyId, value);
+		this.propertyValues.set(propertyId, valueStore);
 	}
 
 	// tslint:disable-next-line:no-any
@@ -158,9 +200,9 @@ export class PropertyValueProxy {
 
 			return {
 				accumulated,
-				...{
+				...(convertedValue && {
 					[propertyId]: convertedValue
-				}
+				})
 			};
 		}, {});
 
