@@ -1,6 +1,5 @@
 import { PatternFolder } from './folder';
 import { ObjectPropertyType } from './property/object-property-type';
-import { Property } from './property/property';
 import { Slot } from './slot';
 import { Store } from '../store';
 
@@ -56,7 +55,7 @@ export class Pattern {
 	/**
 	 * The properties this pattern supports.
 	 */
-	protected properties: Map<string, Property> = new Map();
+	protected properties: ObjectPropertyType = new ObjectPropertyType('root');
 
 	/**
 	 * The slots this pattern supports
@@ -80,14 +79,6 @@ export class Pattern {
 		this.name = Store.guessName(name);
 		this.implementationPath = implementationPath || '';
 		this.exportName = exportName || 'default';
-	}
-
-	/**
-	 * Adds a property to this pattern. This method is called by the pattern parser only.
-	 * @param property The new property to add.
-	 */
-	public addProperty(property: Property): void {
-		this.properties.set(property.getId(), property);
 	}
 
 	/**
@@ -157,33 +148,8 @@ export class Pattern {
 	 * Returns the properties this pattern supports.
 	 * @return The properties this pattern supports.
 	 */
-	public getProperties(): Property[] {
-		return Array.from(this.properties.values());
-	}
-
-	/**
-	 * Returns a property this pattern supports, by its ID.
-	 * @param id The ID of the property.
-	 * @param path If the property you are trying to find is buried inside an object property use the path paremeter to find it.
-	 * eg: `getProperty('image', 'src.srcSet')`.
-	 * @return The property for the given ID, if it exists.
-	 */
-	public getProperty(id: string, path?: string): Property | undefined {
-		let property = this.properties.get(id);
-
-		if (!property || !path) {
-			return property;
-		}
-
-		for (const part of path.split('.')) {
-			if (property && property.getSupportedTypes()[0].getId() === 'object') {
-				property = (property.getSupportedTypes()[0] as ObjectPropertyType).getProperty(part);
-			} else {
-				return;
-			}
-		}
-
-		return property;
+	public getProperties(): ObjectPropertyType {
+		return this.properties;
 	}
 
 	/**

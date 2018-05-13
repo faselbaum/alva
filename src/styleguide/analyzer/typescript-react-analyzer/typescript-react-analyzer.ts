@@ -2,6 +2,7 @@ import { Directory } from '../directory';
 import { Export } from '../typescript/export';
 import { PatternFolder } from '../../../store/styleguide/folder';
 import * as Fs from 'fs';
+import { PropertyResolver } from '../../../store/styleguide/property/object-property-type';
 import * as Path from 'path';
 import { Pattern } from '../../../store/styleguide/pattern';
 import { Property } from '../../../store/styleguide/property/property';
@@ -92,14 +93,10 @@ export class Analyzer extends StyleguideAnalyzer {
 				const pattern = new Pattern(id, name, patternInfo.implementationPath, exportInfo.name);
 				pattern.setIconPath(patternInfo.iconPath);
 
-				const properties: Property[] = PropertyAnalyzer.analyze(
-					propType.type,
-					propType.typeChecker
-				);
+				const propertyResolver: PropertyResolver = () =>
+					PropertyAnalyzer.analyze(propType.type, propType.typeChecker);
 
-				for (const property of properties) {
-					pattern.addProperty(property);
-				}
+				pattern.getProperties().setPropertyResolver(propertyResolver);
 
 				const slots: Slot[] = SlotAnalyzer.analyzeSlots(propType.type, program);
 
