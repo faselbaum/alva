@@ -1,48 +1,57 @@
 import * as MobX from 'mobx';
 import { ObjectPropertyType } from '../styleguide/property/object-property-type';
-import { Property } from '../styleguide/property/property';
 import { PropertyValue } from './property-value';
 
+export interface TypedValueStoreContext {
+	propertyId: string;
+	proxy: PropertyValueProxy;
+}
+
 export class TypedValueStore {
-	private property: Property | undefined;
+	private context: TypedValueStoreContext;
 
 	@MobX.observable protected selectedTypeId: string | undefined;
 
 	@MobX.observable
 	protected typedValues: Map<string | undefined, PropertyValue | PropertyValueProxy> = new Map();
 
-	public getProperty(): Property | undefined {
-		return this.property;
+	public constructor(context: TypedValueStoreContext) {
+		this.context = context;
+	}
+
+	public clone(context: TypedValueStoreContext): TypedValueStore {
+		const clone = new TypedValueStore(context);
+		clone.setContext(this.context);
+		clone.setSelectedTypeId(this.selectedTypeId);
+
+		Array.from(this.typedValues).forEach(value => {
+			const [typeId, typedValue] = value;
+
+			if (typedValue instanceof PropertyValueProxy) {
+				clone.setValue(typedValue.clone(), typeId);
+				return;
+			}
+
+			clone.setValue(typedValue, typeId);
+		});
+
+		return clone;
+	}
+
+	public getContext(): TypedValueStoreContext {
+		return this.context;
 	}
 
 	public getSelectedTypeId(): string | undefined {
 		return this.selectedTypeId;
 	}
 
-	public getValue(typeId?: string): PropertyValue {
-		const value = this.typedValues.get(typeId);
-
-		if (!(value instanceof PropertyValueProxy)) {
-			return value;
-		}
-
-		const values = value.getValues();
-
-		const objectValue = Array.from(values.keys()).reduce((accumulated, propertyId) => {
-			const valueStore = value.getTypedValueStore(propertyId);
-
-			const propertyWrapper = valueStore && {
-				[propertyId]: valueStore.getValue(valueStore.getSelectedTypeId())
-			};
-
-			return { accumulated, ...propertyWrapper };
-		}, {});
-
-		return objectValue;
+	public getValue(typeId?: string): PropertyValue | PropertyValueProxy {
+		return this.typedValues.get(typeId);
 	}
 
-	public setProperty(property?: Property): void {
-		this.property = property;
+	public setContext(context: TypedValueStoreContext): void {
+		this.context = context;
 	}
 
 	public setSelectedTypeId(typeId?: string): void {
@@ -50,31 +59,29 @@ export class TypedValueStore {
 	}
 
 	// tslint:disable-next-line:no-any
-	public setValue(value: any, typeId?: string): void {
-		const propertyType = this.property && typeId && this.property.getType(typeId);
+	public setValue(value: PropertyValue | PropertyValueProxy, typeId?: string): void {
+		if (typeof value === typeof undefined) {
+			this.typedValues.delete(typeId);
+			return;
+		}
+
+		if (value instanceof PropertyValueProxy) {
+			this.typedValues.set(typeId, value);
+			return;
+		}
+
+		const typeContext = this.context.proxy.getContext();
+		const propertyDefinition = typeContext && typeContext.getProperty(this.context.propertyId);
+		const propertyType = typeId && propertyDefinition && propertyDefinition.getType(typeId);
 
 		if (!propertyType) {
 			console.warn('setting raw value for unknown property type');
-			this.setValueOrCreateProxy(value, typeId);
+			this.typedValues.set(typeId, value);
 			return;
 		}
 
 		const coercedValue = propertyType.coerceValue(value);
-		this.setValueOrCreateProxy(coercedValue, typeId);
-	}
-
-	// tslint:disable-next-line:no-any
-	protected setValueOrCreateProxy(value: PropertyValue, typeId?: string): void {
-		if (typeof value !== 'object') {
-			this.typedValues.set(typeId, value);
-		}
-
-		const propertyType = this.property && typeId && this.property.getType(typeId);
-		const proxy = new PropertyValueProxy();
-		const objectPropertyType = propertyType as ObjectPropertyType | undefined;
-		proxy.setContext(objectPropertyType);
-
-		this.typedValues.set(typeId, proxy);
+		this.typedValues.set(typeId, coercedValue);
 	}
 }
 
@@ -82,6 +89,25 @@ export class PropertyValueProxy {
 	private context: ObjectPropertyType | undefined;
 
 	@MobX.observable protected propertyValues: Map<string, TypedValueStore> = new Map();
+
+	public clone(): PropertyValueProxy {
+		const clone = new PropertyValueProxy();
+		clone.setContext(this.context);
+
+		Array.from(this.propertyValues).forEach(value => {
+			const [propertyId, typedValueStore] = value;
+
+			clone.setValue(
+				propertyId,
+				typedValueStore.clone({
+					propertyId,
+					proxy: clone
+				})
+			);
+		});
+
+		return clone;
+	}
 
 	public getContext(): ObjectPropertyType | undefined {
 		return this.context;
@@ -91,9 +117,8 @@ export class PropertyValueProxy {
 		return this.propertyValues.get(propertyId);
 	}
 
-	public getValue(propertyId: string, typeId?: string): PropertyValue {
-		const typedValueStore = this.propertyValues.get(propertyId);
-		return typedValueStore && typedValueStore.getValue(typeId);
+	public getValue(propertyId: string): TypedValueStore | undefined {
+		return this.propertyValues.get(propertyId);
 	}
 
 	public getValues(): ReadonlyMap<string, TypedValueStore | undefined> {
@@ -104,16 +129,41 @@ export class PropertyValueProxy {
 		this.context = context;
 	}
 
-	// tslint:disable-next-line:no-any
-	public setValue(propertyId: string, value: any, typeId?: string): void {
-		let typedValueStore = this.propertyValues.get(propertyId);
-
-		if (!typedValueStore) {
-			typedValueStore = new TypedValueStore();
-			typedValueStore.setProperty(this.context && this.context.getProperty(propertyId));
-			this.propertyValues.set(propertyId, typedValueStore);
+	public setValue(propertyId: string, value?: TypedValueStore, typeId?: string): void {
+		if (!value) {
+			this.propertyValues.delete(propertyId);
+			return;
 		}
 
-		typedValueStore.setValue(value, typeId);
+		this.propertyValues.set(propertyId, value);
+	}
+
+	// tslint:disable-next-line:no-any
+	public toJsonObject(): { [key: string]: any } {
+		const retVal = Array.from(this.propertyValues).reduce((accumulated, propertyEntry) => {
+			const [propertyId, typedValueStore] = propertyEntry;
+			const propertyValue = typedValueStore.getValue(typedValueStore.getSelectedTypeId());
+
+			if (propertyValue instanceof PropertyValueProxy) {
+				return { accumulated, ...propertyValue.toJsonObject() };
+			}
+
+			const proxyContext = typedValueStore.getContext().proxy.getContext();
+			const propertyDefinition = proxyContext && proxyContext.getProperty(propertyId);
+			const selectedTypeId = typedValueStore.getSelectedTypeId();
+			const propertyType =
+				propertyDefinition && selectedTypeId && propertyDefinition.getType(selectedTypeId);
+
+			const convertedValue = propertyType && propertyType.convertToRender(propertyValue);
+
+			return {
+				accumulated,
+				...{
+					[propertyId]: convertedValue
+				}
+			};
+		}, {});
+
+		return retVal;
 	}
 }

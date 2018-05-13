@@ -1,11 +1,9 @@
-import * as deepAssign from 'deep-assign';
 import { JsonArray, JsonObject, JsonValue } from '../json';
 import * as MobX from 'mobx';
-import * as ObjectPath from 'object-path';
 import { Page } from './page';
 import { Pattern } from '../styleguide/pattern';
-import { Property } from '../styleguide/property/property';
 import { PropertyValue } from './property-value';
+import { PropertyValueProxy, TypedValueStore } from './property-value-proxy';
 import { Store } from '../store';
 import * as Uuid from 'uuid';
 
@@ -15,6 +13,15 @@ export interface PageElementProperties {
 	parentSlotId?: string;
 	pattern?: Pattern;
 	setDefaults?: boolean;
+}
+
+export interface WrappedPropertyObjectValue {
+	[propertyId: string]: WrappedPropertyValue;
+}
+
+export interface WrappedPropertyValue {
+	typeId: string;
+	value: JsonValue | WrappedPropertyObjectValue;
 }
 
 /**
@@ -83,7 +90,7 @@ export class PageElement {
 	 * Each key represents the property ID of the pattern, while the value holds the content
 	 * as provided by the designer.
 	 */
-	@MobX.observable private propertyValues: Map<string, PropertyValue> = new Map();
+	@MobX.observable private propertyValueProxy: PropertyValueProxy = new PropertyValueProxy();
 
 	/**
 	 * Creates a new page element.
@@ -105,9 +112,13 @@ export class PageElement {
 		}
 
 		if (properties.setDefaults && this.pattern) {
-			this.pattern.getProperties().forEach(property => {
-				this.setPropertyValue(property.getId(), property.getDefaultValue());
-			});
+			// this.pattern.getProperties().forEach(property => {
+			// 	this.setPropertyValue(property.getId(), property.getDefaultValue());
+			// });
+		}
+
+		if (this.pattern) {
+			this.propertyValueProxy.setContext(this.pattern.getProperties());
 		}
 
 		this.setParent(properties.parent, properties.parentSlotId);
@@ -157,10 +168,15 @@ export class PageElement {
 		}
 
 		if (json.properties) {
-			Object.keys(json.properties as JsonObject).forEach((propertyId: string) => {
-				const value: JsonValue = (json.properties as JsonObject)[propertyId];
-				element.setPropertyValue(propertyId, element.createPropertyValue(value));
-			});
+			// tslint:disable-next-line:no-any
+			const propertyObject = (json.properties as any) as WrappedPropertyObjectValue;
+			Object.keys(propertyObject).forEach(propertyId =>
+				this.loadPropertyFromJson(
+					propertyId,
+					propertyObject[propertyId],
+					element.getPropertyValueProxy()
+				)
+			);
 		}
 
 		if (json.contents) {
@@ -190,6 +206,36 @@ export class PageElement {
 		return element;
 	}
 
+	protected static loadPropertyFromJson(
+		propertyId: string,
+		value: WrappedPropertyValue,
+		parentProxy: PropertyValueProxy
+	): void {
+		const typeId = value.typeId;
+		const unwrappedValue = value.value;
+
+		const valueStore = new TypedValueStore({
+			propertyId,
+			proxy: parentProxy
+		});
+
+		if (typeof unwrappedValue === 'object') {
+			const objectValue = unwrappedValue as WrappedPropertyObjectValue;
+			const childProxy = new PropertyValueProxy();
+			childProxy.setContext(parentProxy.getContext());
+			parentProxy.setValue(propertyId, valueStore);
+
+			Object.keys(objectValue).forEach(childPropertyId => {
+				this.loadPropertyFromJson(childPropertyId, objectValue[childPropertyId], childProxy);
+			});
+
+			return;
+		}
+
+		valueStore.setSelectedTypeId(typeId);
+		valueStore.setValue(unwrappedValue, typeId);
+	}
+
 	/**
 	 * Adds a child element to is element (and removes it from any other parent).
 	 * @param child The child element to add.
@@ -217,10 +263,7 @@ export class PageElement {
 			});
 		});
 
-		this.propertyValues.forEach((value: PropertyValue, id: string) => {
-			clone.setPropertyValue(id, value);
-		});
-
+		clone.setPropertyValueProxy(this.propertyValueProxy.clone());
 		clone.setName(this.name);
 
 		return clone;
@@ -329,14 +372,8 @@ export class PageElement {
 	 * the operation edits 'image.src.srcSet.xs' on the element.
 	 * @return The content value (as provided by the designer).
 	 */
-	public getPropertyValue(id: string, path?: string): PropertyValue {
-		const value: PropertyValue = this.propertyValues.get(id);
-
-		if (!path) {
-			return value;
-		}
-
-		return ObjectPath.get(value as {}, path);
+	public getPropertyValueProxy(): PropertyValueProxy {
+		return this.propertyValueProxy;
 	}
 
 	/**
@@ -524,34 +561,8 @@ export class PageElement {
 		}
 	}
 
-	/**
-	 * Sets a property value (designer content) for this page element.
-	 * Any given value is automatically converted to be compatible to the property type.
-	 * For instance, the string "true" is converted to true if the property is boolean.
-	 * @param id The ID of the property to set the value for.
-	 * @param path A dot ('.') separated optional path within an object property to point to a deep
-	 * property. E.g., setting propertyId to 'image' and path to 'src.srcSet.xs',
-	 * the operation edits 'image.src.srcSet.xs' on the element.
-	 * @param value The value to set (which is automatically converted, see above).
-	 */
-	// tslint:disable-next-line:no-any
-	public setPropertyValue(id: string, value: any, path?: string): void {
-		let property: Property | undefined;
-		if (this.pattern) {
-			property = this.pattern.getProperty(id, path);
-			if (!property) {
-				console.warn(`Unknown property '${id}' in pattern '${this.patternId}'`);
-			}
-		}
-
-		const coercedValue = property ? property.getSupportedTypes()[0].coerceValue(value) : value;
-		if (path) {
-			const rootPropertyValue = this.propertyValues.get(id) || {};
-			ObjectPath.set<{}, PropertyValue>(rootPropertyValue, path, coercedValue);
-			this.propertyValues.set(id, deepAssign({}, rootPropertyValue));
-		} else {
-			this.propertyValues.set(id, coercedValue);
-		}
+	public setPropertyValueProxy(propertyValueProxy: PropertyValueProxy): void {
+		this.propertyValueProxy = propertyValueProxy;
 	}
 
 	/**
@@ -578,19 +589,8 @@ export class PageElement {
 			);
 		});
 
-		json.properties = {};
-		this.propertyValues.forEach((value: PropertyValue, key: string) => {
-			if (props && props.forRendering) {
-				const pattern: Pattern | undefined = this.getPattern();
-				const property: Property | undefined = pattern ? pattern.getProperty(key) : undefined;
-				if (property) {
-					value = property.getSupportedTypes()[0].convertToRender(value);
-				}
-			}
-
-			const jsonValue = this.propertyToJsonValue(value);
-			(json.properties as JsonObject)[key] = jsonValue;
-		});
+		const propertyValueProxy = this.getPropertyValueProxy();
+		json.properties = propertyValueProxy.toJsonObject();
 
 		return json;
 	}
