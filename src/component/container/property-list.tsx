@@ -127,15 +127,11 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 	): React.ReactNode {
 		const id = property.getId();
 		const typedValueStore = propertyValueProxy.getValueStore(id);
-		const selectedTypeId = typedValueStore
-			? typedValueStore.getSelectedTypeId() || property.getSupportedTypes()[0].getId()
-			: property.getSupportedTypes()[0].getId();
+		const selectedTypeId = typedValueStore.getSelectedTypeId();
 		const name = property.getName();
 		const type = property.getType(selectedTypeId);
 
-		const value = typedValueStore
-			? typedValueStore.getValue(selectedTypeId)
-			: property.getDefaultValue();
+		const value = propertyValueProxy.getValue(id);
 
 		const propTypes = property.getSupportedTypes().map(supportedType => ({
 			id: supportedType.getId(),
@@ -221,8 +217,13 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 			if (existingChildProxy) {
 				childProxy = existingChildProxy;
 			} else {
-				childProxy = new PropertyValueProxy();
-				childProxy.setContext(objectPropertyType);
+				childProxy = new PropertyValueProxy({
+					objectPropertyType,
+					parent: {
+						propertyId: id,
+						propertyValueProxy
+					}
+				});
 			}
 
 			propertyControl = (

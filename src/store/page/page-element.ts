@@ -91,7 +91,10 @@ export class PageElement {
 	 * Each key represents the property ID of the pattern, while the value holds the content
 	 * as provided by the designer.
 	 */
-	@MobX.observable private propertyValueProxy: PropertyValueProxy = new PropertyValueProxy();
+	@MobX.observable
+	private propertyValueProxy: PropertyValueProxy = new PropertyValueProxy({
+		objectPropertyType: new ObjectPropertyType('root-unknown-pattern')
+	});
 
 	/**
 	 * Creates a new page element.
@@ -119,7 +122,9 @@ export class PageElement {
 		}
 
 		if (this.pattern) {
-			this.propertyValueProxy.setContext(this.pattern.getProperties());
+			this.propertyValueProxy = new PropertyValueProxy({
+				objectPropertyType: this.pattern.getProperties()
+			});
 		}
 
 		this.setParent(properties.parent, properties.parentSlotId);
@@ -169,15 +174,31 @@ export class PageElement {
 		}
 
 		if (json.properties) {
-			// tslint:disable-next-line:no-any
-			const propertyObject = (json.properties as any) as JsonObject;
-			Object.keys(propertyObject).forEach(propertyId =>
-				this.loadAndMigratePropertyFromJson(
-					propertyId,
-					propertyObject[propertyId],
-					element.getPropertyValueProxy()
-				)
-			);
+			const old = false;
+
+			if (old) {
+				// tslint:disable-next-line:no-any
+				const propertyObject = (json.properties as any) as JsonObject;
+
+				Object.keys(propertyObject).forEach(propertyId =>
+					this.loadAndMigratePropertyFromJson(
+						propertyId,
+						propertyObject[propertyId],
+						element.getPropertyValueProxy()
+					)
+				);
+			} else {
+				// tslint:disable-next-line:no-any
+				const propertyObject = (json.properties as any) as WrappedPropertyObjectValue;
+
+				Object.keys(propertyObject).forEach(propertyId =>
+					this.loadPropertyFromJson(
+						propertyId,
+						propertyObject[propertyId],
+						element.getPropertyValueProxy()
+					)
+				);
+			}
 		}
 
 		if (json.contents) {
@@ -212,14 +233,18 @@ export class PageElement {
 		value: JsonValue | JsonObject,
 		parentProxy: PropertyValueProxy
 	): void {
-		const parentTypeContext = parentProxy.getContext();
-		const propertyDefinition = parentTypeContext && parentTypeContext.getProperty(propertyId);
-		const supportedTypes = propertyDefinition ? propertyDefinition.getSupportedTypes() : [];
+		// TODO: Store unknown values somewhere so they dont't vanish on next save.
 
-		const valueStore = new TypedValueStore({
-			propertyId,
-			proxy: parentProxy
-		});
+		const parentTypeContext = parentProxy.getContext().objectPropertyType;
+		const property = parentTypeContext && parentTypeContext.getProperty(propertyId);
+
+		if (!property) {
+			console.warn(`unable to find definition for property: ${propertyId}`);
+			return;
+		}
+
+		const valueStore = new TypedValueStore(property);
+		const supportedTypes = property.getSupportedTypes();
 
 		parentProxy.setValueStore(propertyId, valueStore);
 
@@ -227,10 +252,25 @@ export class PageElement {
 			const childProxyContext = supportedTypes.find(
 				supportedType => supportedType instanceof ObjectPropertyType
 			) as ObjectPropertyType | undefined;
-			const typeId = childProxyContext && childProxyContext.getId();
-			valueStore.setSelectedTypeId(typeId);
-			const childProxy = new PropertyValueProxy();
-			childProxy.setContext(childProxyContext);
+
+			if (childProxyContext) {
+				valueStore.setSelectedTypeId(childProxyContext.getId());
+			}
+
+			if (!childProxyContext) {
+				console.warn(
+					`unable to find type definition for property: ${propertyId} that resembles an object`
+				);
+				return;
+			}
+
+			const childProxy = new PropertyValueProxy({
+				objectPropertyType: childProxyContext,
+				parent: {
+					propertyId,
+					propertyValueProxy: parentProxy
+				}
+			});
 
 			const jsonObject = value as JsonObject;
 			Object.keys(jsonObject).forEach(childPropertyId =>
@@ -243,9 +283,7 @@ export class PageElement {
 			return;
 		}
 
-		const firstSupportedTypeId = supportedTypes.length ? supportedTypes[0].getId() : undefined;
-		valueStore.setSelectedTypeId(firstSupportedTypeId);
-		parentProxy.setValue(propertyId, firstSupportedTypeId, value);
+		parentProxy.setValue(propertyId, undefined, value);
 	}
 
 	protected static loadPropertyFromJson(
@@ -253,19 +291,15 @@ export class PageElement {
 		value: WrappedPropertyValue,
 		parentProxy: PropertyValueProxy
 	): void {
+		// TODO: Store unknown values somewhere so they dont't vanish on next save.
+
 		const typeId = value.typeId;
 		const unwrappedValue = value.value;
 
-		const valueStore = new TypedValueStore({
-			propertyId,
-			proxy: parentProxy
-		});
-
 		if (typeof unwrappedValue === 'object') {
 			const objectValue = unwrappedValue as WrappedPropertyObjectValue;
-			const childProxy = new PropertyValueProxy();
-			childProxy.setContext(parentProxy.getContext());
-			parentProxy.setValueStore(propertyId, valueStore);
+			const childProxy = new PropertyValueProxy(parentProxy.getContext());
+			parentProxy.setValue(propertyId, typeId, childProxy);
 
 			Object.keys(objectValue).forEach(childPropertyId => {
 				this.loadPropertyFromJson(childPropertyId, objectValue[childPropertyId], childProxy);
@@ -274,8 +308,7 @@ export class PageElement {
 			return;
 		}
 
-		valueStore.setSelectedTypeId(typeId);
-		valueStore.setValue(unwrappedValue, typeId);
+		parentProxy.setValue(propertyId, typeId, unwrappedValue);
 	}
 
 	/**
