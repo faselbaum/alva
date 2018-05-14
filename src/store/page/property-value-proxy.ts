@@ -99,6 +99,8 @@ export class TypedValueStore {
 export class PropertyValueProxy {
 	private context: ObjectPropertyType | undefined;
 
+	@MobX.observable protected isExpanded: boolean = false;
+
 	@MobX.observable protected propertyValues: Map<string, TypedValueStore> = new Map();
 
 	// tslint:disable:no-any
@@ -148,6 +150,10 @@ export class PropertyValueProxy {
 		return this.context;
 	}
 
+	public getIsExpanded(): boolean {
+		return this.isExpanded;
+	}
+
 	public getValue(propertyId: string, typeId?: string): PropertyValue {
 		const valueStore = this.propertyValues.get(propertyId);
 		return valueStore && valueStore.getValue(typeId);
@@ -163,6 +169,10 @@ export class PropertyValueProxy {
 
 	public setContext(context?: ObjectPropertyType): void {
 		this.context = context;
+	}
+
+	public setIsExpanded(expanded: boolean): void {
+		this.isExpanded = expanded;
 	}
 
 	public setValue(propertyId: string, typeId?: string, value?: PropertyValue): void {

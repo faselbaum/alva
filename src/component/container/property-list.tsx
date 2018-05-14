@@ -6,7 +6,6 @@ import { remote } from 'electron';
 import Element from '../../lsg/patterns/element';
 import { EnumItem, Values } from '../../lsg/patterns/property-items/enum-item';
 import { EnumPropertyType, Option } from '../../store/styleguide/property/enum-property-type';
-import * as MobX from 'mobx';
 import { observer } from 'mobx-react';
 import { ObjectPropertyType } from '../../store/styleguide/property/object-property-type';
 import { PageElement } from '../../store/page/page-element';
@@ -22,15 +21,20 @@ import { StringPropertyType } from '../../store/styleguide/property/string-prope
 
 interface PropertyTreeProps {
 	element: PageElement;
-	propertyId?: string;
+	parentPropertyName?: string;
 	propertyValueProxy: PropertyValueProxy;
 	typeContext?: ObjectPropertyType;
 }
 
 @observer
 class PropertyTree extends React.Component<PropertyTreeProps> {
-	@MobX.observable protected isOpen = false;
 	protected lastCommand: PropertyValueCommand;
+
+	public constructor(props: PropertyTreeProps) {
+		super(props);
+
+		this.handleExpandObject = this.handleExpandObject.bind(this);
+	}
 
 	protected convertOptionsToValues(options: Option[]): Values[] {
 		return options.map(option => ({
@@ -81,30 +85,27 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 		);
 	}
 
-	protected handleClick(): void {
-		this.isOpen = !this.isOpen;
+	protected handleExpandObject(): void {
+		const propertyValueProxy = this.props.propertyValueProxy;
+		propertyValueProxy.setIsExpanded(!propertyValueProxy.getIsExpanded());
 	}
 
 	public render(): React.ReactNode {
-		const { typeContext, propertyId } = this.props;
+		const { parentPropertyName, propertyValueProxy } = this.props;
+		const isExpanded = propertyValueProxy.getIsExpanded();
 
-		if (!propertyId) {
+		if (!parentPropertyName) {
 			return this.renderItems();
-		}
-
-		const property = typeContext && typeContext.getProperty(propertyId);
-		if (!property) {
-			return;
 		}
 
 		return (
 			<Element
 				dragging={false}
-				title={property.getName()}
-				open={this.isOpen}
-				onClick={this.handleClick}
+				title={parentPropertyName}
+				open={isExpanded}
+				onClick={this.handleExpandObject}
 			>
-				{this.isOpen ? this.renderItems() : 'hidden'}
+				{isExpanded ? this.renderItems() : 'hidden'}
 			</Element>
 		);
 	}
@@ -221,12 +222,12 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 				childProxy = existingChildProxy;
 			} else {
 				childProxy = new PropertyValueProxy();
-				propertyValueProxy.setContext(objectPropertyType);
+				childProxy.setContext(objectPropertyType);
 			}
 
 			propertyControl = (
 				<PropertyTree
-					propertyId={id}
+					parentPropertyName={property.getName()}
 					propertyValueProxy={childProxy}
 					typeContext={objectPropertyType}
 					element={this.props.element}
