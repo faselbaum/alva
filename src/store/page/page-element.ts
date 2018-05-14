@@ -310,20 +310,6 @@ export class PageElement {
 
 		return clone;
 	}
-
-	/**
-	 * Creates a property value or element for a given serialization JSON.
-	 * @param json The JSON to read from.
-	 * @return The new property value or element.
-	 */
-	protected createPropertyValue(json: JsonValue): PageElement | PropertyValue {
-		if (json && (json as JsonObject)['_type'] === 'pattern') {
-			return PageElement.fromJsonObject(json as JsonObject, this);
-		} else {
-			return json as PropertyValue;
-		}
-	}
-
 	/**
 	 * Returns all child elements contained by this element, mapped to their containing slots.
 	 */
@@ -632,7 +618,7 @@ export class PageElement {
 		});
 
 		const propertyValueProxy = this.getPropertyValueProxy();
-		json.properties = propertyValueProxy.toJsonObject(props && !props.forRendering);
+		json.properties = propertyValueProxy.toJsonObject(props && props.forRendering);
 
 		return json;
 	}

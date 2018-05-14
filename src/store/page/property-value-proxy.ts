@@ -101,13 +101,14 @@ export class PropertyValueProxy {
 
 	@MobX.observable protected propertyValues: Map<string, TypedValueStore> = new Map();
 
-	// tslint:disable-next-line:no-any
+	// tslint:disable:no-any
 	private static createPropertyJsonValue(
 		propertyId: string,
-		typeId?: string,
 		value?: any,
+		typeId?: string,
 		wrapWithTypeInfo?: boolean
 	): { [propertyId: string]: any } | undefined {
+		// tslint:enable:no-any
 		if (!value) {
 			return undefined;
 		}
@@ -119,8 +120,10 @@ export class PropertyValueProxy {
 		}
 
 		return {
-			typeId,
-			value
+			[propertyId]: {
+				typeId,
+				value
+			}
 		};
 	}
 
@@ -201,7 +204,7 @@ export class PropertyValueProxy {
 	}
 
 	// tslint:disable-next-line:no-any
-	public toJsonObject(wrapWithTypeInfo?: boolean): { [key: string]: any } {
+	public toJsonObject(forRendering?: boolean): { [key: string]: any } {
 		const retVal = Array.from(this.propertyValues).reduce((accumulated, propertyEntry) => {
 			const [propertyId, typedValueStore] = propertyEntry;
 			if (!typedValueStore) {
@@ -216,9 +219,9 @@ export class PropertyValueProxy {
 					...accumulated,
 					...PropertyValueProxy.createPropertyJsonValue(
 						propertyId,
-						selectedTypeId,
 						propertyValue.toJsonObject(),
-						wrapWithTypeInfo
+						selectedTypeId,
+						!forRendering
 					)
 				};
 			}
@@ -228,15 +231,17 @@ export class PropertyValueProxy {
 			const propertyType =
 				propertyDefinition && selectedTypeId && propertyDefinition.getType(selectedTypeId);
 
-			const convertedValue = propertyType && propertyType.convertToRender(propertyValue);
+			const convertedValue = forRendering
+				? propertyType && propertyType.convertToRender(propertyValue)
+				: propertyValue;
 
 			return {
 				...accumulated,
 				...PropertyValueProxy.createPropertyJsonValue(
 					propertyId,
-					selectedTypeId,
 					convertedValue,
-					wrapWithTypeInfo
+					selectedTypeId,
+					!forRendering
 				)
 			};
 		}, {});
