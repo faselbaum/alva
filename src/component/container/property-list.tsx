@@ -243,6 +243,9 @@ class PropertyTree extends React.Component<PropertyTreeProps> {
 				propertyName={name}
 				selectedPropertyType={selectedTypeId}
 				propertyTypes={propTypes}
+				handleChange={e =>
+					typedValueStore && typedValueStore.setSelectedTypeId(e.currentTarget.value)
+				}
 			>
 				{propertyControl}
 			</PropertyItem>

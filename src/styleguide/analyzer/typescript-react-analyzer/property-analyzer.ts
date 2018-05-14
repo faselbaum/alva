@@ -25,6 +25,7 @@ type PropertyTypeFactory = (args: PropertyTypeFactoryArgs) => PropertyType | und
  */
 export class PropertyAnalyzer {
 	private static PROPERTY_TYPE_FACTORIES: PropertyTypeFactory[] = [
+		PropertyAnalyzer.createAssetPropertyType,
 		PropertyAnalyzer.createBooleanPropertyType,
 		PropertyAnalyzer.createEnumPropertyType,
 		PropertyAnalyzer.createStringPropertyType,
@@ -128,6 +129,18 @@ export class PropertyAnalyzer {
 
 			const itemType = arrayType.typeArguments[0];
 			console.log('Found array type with item type: ', itemType);
+		}
+
+		return;
+	}
+
+	private static createAssetPropertyType(
+		args: PropertyTypeFactoryArgs
+	): AssetPropertyType | undefined {
+		if ((args.type.flags & ts.TypeFlags.String) === ts.TypeFlags.String) {
+			if (PropertyAnalyzer.getJsDocValueFromSymbol(args.symbol, 'asset') !== undefined) {
+				return AssetPropertyType.getInstance();
+			}
 		}
 
 		return;
@@ -261,11 +274,7 @@ export class PropertyAnalyzer {
 		args: PropertyTypeFactoryArgs
 	): StringPropertyType | undefined {
 		if ((args.type.flags & ts.TypeFlags.String) === ts.TypeFlags.String) {
-			if (PropertyAnalyzer.getJsDocValueFromSymbol(args.symbol, 'asset') !== undefined) {
-				return AssetPropertyType.getInstance();
-			} else {
-				return StringPropertyType.getInstance();
-			}
+			return StringPropertyType.getInstance();
 		}
 
 		return;
