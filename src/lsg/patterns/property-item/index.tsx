@@ -37,6 +37,7 @@ const StyledSelect = styled.select`
 	color: ${colors.grey36.toString()};
 	border-bottom: 1px solid transparent;
 	transition: all 0.2s;
+	direction: rtl;
 
 	&:hover {
 		color: ${colors.black.toString()};
