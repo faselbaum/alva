@@ -90,7 +90,7 @@ export class Styleguide {
 		const assetPattern = new Pattern(SyntheticPatternType.Placeholder, 'Placeholder', '');
 		const assetProperty = new Property(AssetPropertyType.SYNTHETIC_ASSET_ID);
 		assetProperty.addSupportedType(AssetPropertyType.getInstance());
-		textPattern.getProperties().setPropertyResolver(() => [assetProperty]);
+		assetPattern.getProperties().setPropertyResolver(() => [assetProperty]);
 		folder.addPattern(assetPattern);
 		this.addPattern(assetPattern);
 

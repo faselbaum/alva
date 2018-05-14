@@ -1,5 +1,6 @@
 import { JsonArray, JsonObject, JsonValue } from '../json';
 import * as MobX from 'mobx';
+import { ObjectPropertyType } from '../styleguide/property/object-property-type';
 import { Page } from './page';
 import { Pattern } from '../styleguide/pattern';
 import { PropertyValue } from './property-value';
@@ -169,9 +170,9 @@ export class PageElement {
 
 		if (json.properties) {
 			// tslint:disable-next-line:no-any
-			const propertyObject = (json.properties as any) as WrappedPropertyObjectValue;
+			const propertyObject = (json.properties as any) as JsonObject;
 			Object.keys(propertyObject).forEach(propertyId =>
-				this.loadPropertyFromJson(
+				this.loadAndMigratePropertyFromJson(
 					propertyId,
 					propertyObject[propertyId],
 					element.getPropertyValueProxy()
@@ -204,6 +205,47 @@ export class PageElement {
 		}
 
 		return element;
+	}
+
+	protected static loadAndMigratePropertyFromJson(
+		propertyId: string,
+		value: JsonValue | JsonObject,
+		parentProxy: PropertyValueProxy
+	): void {
+		const parentTypeContext = parentProxy.getContext();
+		const propertyDefinition = parentTypeContext && parentTypeContext.getProperty(propertyId);
+		const supportedTypes = propertyDefinition ? propertyDefinition.getSupportedTypes() : [];
+
+		const valueStore = new TypedValueStore({
+			propertyId,
+			proxy: parentProxy
+		});
+
+		parentProxy.setValueStore(propertyId, valueStore);
+
+		if (typeof value === 'object') {
+			const childProxyContext = supportedTypes.find(
+				supportedType => supportedType instanceof ObjectPropertyType
+			) as ObjectPropertyType | undefined;
+			const typeId = childProxyContext && childProxyContext.getId();
+			valueStore.setSelectedTypeId(typeId);
+			const childProxy = new PropertyValueProxy();
+			childProxy.setContext(childProxyContext);
+
+			const jsonObject = value as JsonObject;
+			Object.keys(jsonObject).forEach(childPropertyId =>
+				this.loadAndMigratePropertyFromJson(
+					childPropertyId,
+					jsonObject[childPropertyId],
+					childProxy
+				)
+			);
+			return;
+		}
+
+		const firstSupportedTypeId = supportedTypes.length ? supportedTypes[0].getId() : undefined;
+		valueStore.setSelectedTypeId(firstSupportedTypeId);
+		parentProxy.setValue(propertyId, firstSupportedTypeId, value);
 	}
 
 	protected static loadPropertyFromJson(
@@ -590,7 +632,7 @@ export class PageElement {
 		});
 
 		const propertyValueProxy = this.getPropertyValueProxy();
-		json.properties = propertyValueProxy.toJsonObject();
+		json.properties = propertyValueProxy.toJsonObject(props && !props.forRendering);
 
 		return json;
 	}

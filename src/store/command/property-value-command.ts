@@ -1,6 +1,7 @@
 import { Command } from './command';
 import { ElementCommand } from './element-command';
 import { PageElement } from '../page/page-element';
+import { PropertyValue } from '../page/property-value';
 import { PropertyValueProxy, TypedValueStore } from '../page/property-value-proxy';
 
 /**
@@ -11,7 +12,7 @@ export class PropertyValueCommand extends ElementCommand {
 	 * The previous value, for undo.
 	 */
 	// tslint:disable-next-line:no-any
-	protected previousValue: any;
+	protected previousValue: PropertyValue;
 
 	/**
 	 * The ID of the property to modify.
@@ -33,7 +34,7 @@ export class PropertyValueCommand extends ElementCommand {
 	protected typeId: string;
 
 	// tslint:disable-next-line:no-any
-	protected value: any;
+	protected value: PropertyValue;
 
 	/**
 	 * Creates a new user operation to set the value of a page element property.
@@ -46,7 +47,7 @@ export class PropertyValueCommand extends ElementCommand {
 	 */
 	// tslint:disable-next-line:no-any
 	public constructor(
-		value: any,
+		value: PropertyValue,
 		element: PageElement,
 		propertyValueProxy: PropertyValueProxy,
 		propertyId: string,
