@@ -4,7 +4,7 @@ import { ObjectPropertyType } from '../styleguide/property/object-property-type'
 import { Page } from './page';
 import { Pattern } from '../styleguide/pattern';
 import { PropertyValue } from './property-value';
-import { PropertyValueProxy, TypedValueStore } from './property-value-proxy';
+import { PropertyValueProxy } from './property-value-proxy';
 import { Store } from '../store';
 import * as Uuid from 'uuid';
 
@@ -243,19 +243,12 @@ export class PageElement {
 			return;
 		}
 
-		const valueStore = new TypedValueStore(property);
 		const supportedTypes = property.getSupportedTypes();
-
-		parentProxy.setValueStore(propertyId, valueStore);
 
 		if (typeof value === 'object') {
 			const childProxyContext = supportedTypes.find(
 				supportedType => supportedType instanceof ObjectPropertyType
 			) as ObjectPropertyType | undefined;
-
-			if (childProxyContext) {
-				valueStore.setSelectedTypeId(childProxyContext.getId());
-			}
 
 			if (!childProxyContext) {
 				console.warn(
@@ -294,12 +287,34 @@ export class PageElement {
 		// TODO: Store unknown values somewhere so they dont't vanish on next save.
 
 		const typeId = value.typeId;
+		const property = parentProxy.getContext().objectPropertyType.getProperty(propertyId);
+
+		if (!property) {
+			console.warn(`Unknown property: ${propertyId} encountered. Unable to load value`);
+			return;
+		}
+
+		const type = property.getType(typeId);
 		const unwrappedValue = value.value;
+
+		if (!type) {
+			console.warn(
+				`Encountered value: ${unwrappedValue} for unknown property type: ${typeId}. Unable to load value`
+			);
+			return;
+		}
 
 		if (typeof unwrappedValue === 'object') {
 			const objectValue = unwrappedValue as WrappedPropertyObjectValue;
-			const childProxy = new PropertyValueProxy(parentProxy.getContext());
-			parentProxy.setValue(propertyId, typeId, childProxy);
+			const objectType = type as ObjectPropertyType;
+
+			const childProxy = new PropertyValueProxy({
+				objectPropertyType: objectType,
+				parent: {
+					propertyValueProxy: parentProxy,
+					propertyId
+				}
+			});
 
 			Object.keys(objectValue).forEach(childPropertyId => {
 				this.loadPropertyFromJson(childPropertyId, objectValue[childPropertyId], childProxy);

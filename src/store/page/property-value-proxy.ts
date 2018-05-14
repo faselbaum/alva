@@ -235,7 +235,7 @@ export class PropertyValueProxy {
 		}
 	}
 
-	public setValueStore(propertyId: string, valueStore?: TypedValueStore): void {
+	private setValueStore(propertyId: string, valueStore?: TypedValueStore): void {
 		if (!valueStore) {
 			this.propertyValues.delete(propertyId);
 			return;
