@@ -360,6 +360,51 @@ export function createMenu(ctx: MenuContext): void {
 			label: '&View',
 			submenu: [
 				{
+					label: 'Previous Page',
+					accelerator: (() => {
+						if (process.platform === 'darwin') {
+							return 'Ctrl+Command+Left';
+						} else {
+							return 'Ctrl+Shift+Left';
+						}
+					})(),
+					click: () => {
+						const page = ctx.store.getCurrentPage();
+						if (!page) {
+							return;
+						}
+						const index = ctx.store.getProject().getPageIndex(page);
+						if (typeof index !== 'number') {
+							return;
+						}
+						ctx.store.setActivePageByIndex(index - 1);
+					}
+				},
+				{
+					label: 'Next Page',
+					accelerator: (() => {
+						if (process.platform === 'darwin') {
+							return 'Ctrl+Command+Right';
+						} else {
+							return 'Ctrl+Shift+Right';
+						}
+					})(),
+					click: () => {
+						const page = ctx.store.getCurrentPage();
+						if (!page) {
+							return;
+						}
+						const index = ctx.store.getProject().getPageIndex(page);
+						if (typeof index !== 'number') {
+							return;
+						}
+						ctx.store.setActivePageByIndex(index + 1);
+					}
+				},
+				{
+					type: 'separator'
+				},
+				{
 					label: '&Reload',
 					accelerator: 'CmdOrCtrl+R',
 					click: (item: MenuItem, focusedWindow: BrowserWindow) => {
