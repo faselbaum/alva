@@ -6,30 +6,44 @@ import { ServerMessage, ServerMessageType } from '.';
 export { ServerMessage } from '.';
 export * from './is-message';
 
-export function send(message: ServerMessage): void {
-	if (!isMessage(message)) {
-		console.warn(`Server tried to send invalid message: ${JSON.stringify(message)}`);
-		return;
+export type MessageListener = (message: ServerMessage) => void;
+
+export class Sender {
+	private listeners: MessageListener[] = [];
+
+	public constructor() {
+		// tslint:disable-next-line:no-any
+		ipcMain.on('message', (e: any, message: any) => {
+			if (!isMessage(message)) {
+				return;
+			}
+			this.listeners.forEach(listener => listener(message));
+		});
 	}
 
-	BrowserWindow.getAllWindows().forEach(win => win.webContents.send('message', message));
-}
+	public emit(message: ServerMessage): void {
+		this.listeners.forEach(listener => listener(message));
+	}
 
-export function receive(handler: (message: ServerMessage) => void): void {
-	// tslint:disable-next-line:no-any
-	ipcMain.on('message', (e: any, message: any) => {
+	public send(message: ServerMessage): void {
 		if (!isMessage(message)) {
+			console.warn(`Server tried to send invalid message: ${JSON.stringify(message)}`);
 			return;
 		}
-		handler(message);
-	});
-}
 
-// tslint:disable-next-line:no-any
-export function log(...args: any[]): void {
-	send({
-		type: ServerMessageType.Log,
-		id: uuid.v4(),
-		payload: args
-	});
+		BrowserWindow.getAllWindows().forEach(win => win.webContents.send('message', message));
+	}
+
+	public receive(handler: MessageListener): void {
+		this.listeners.push(handler);
+	}
+
+	// tslint:disable-next-line:no-any
+	public log(...args: any[]): void {
+		this.send({
+			type: ServerMessageType.Log,
+			id: uuid.v4(),
+			payload: args
+		});
+	}
 }

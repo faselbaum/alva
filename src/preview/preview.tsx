@@ -2,7 +2,6 @@ import * as HtmlSketchApp from '@brainly/html-sketchapp';
 import { differenceBy } from 'lodash';
 import { PreviewMessageType } from '../message';
 import * as Mobx from 'mobx';
-import { PreviewDocumentMode } from './preview-document';
 import * as SmoothscrollPolyfill from 'smoothscroll-polyfill';
 import * as Types from '../model/types';
 import * as uuid from 'uuid';
@@ -35,7 +34,7 @@ export class PreviewStore implements Types.RenderPreviewStore {
 	@Mobx.observable public elements: Types.SerializedElement[] = [];
 	@Mobx.observable public highlightedElementId: string = '';
 	@Mobx.observable public metaDown: boolean = false;
-	@Mobx.observable public mode: PreviewDocumentMode = PreviewDocumentMode.Live;
+	@Mobx.observable public mode: Types.PreviewDocumentMode = Types.PreviewDocumentMode.Live;
 	@Mobx.observable public pageId: string = '';
 	@Mobx.observable public pages: Types.SerializedPage[] = [];
 	@Mobx.observable public patternProperties: Types.SerializedPatternProperty[] = [];
@@ -59,11 +58,11 @@ export class PreviewStore implements Types.RenderPreviewStore {
 
 		switch (payload.mode) {
 			case 'static':
-				store.mode = PreviewDocumentMode.Static;
+				store.mode = Types.PreviewDocumentMode.Static;
 				break;
 			case 'live':
 			default:
-				store.mode = PreviewDocumentMode.Live;
+				store.mode = Types.PreviewDocumentMode.Live;
 		}
 
 		if (payload.elementContents) {
@@ -101,7 +100,7 @@ function main(): void {
 	const store = PreviewStore.from(initialData ? initialData.data : undefined);
 
 	const connection =
-		store.mode === PreviewDocumentMode.Live
+		store.mode === Types.PreviewDocumentMode.Live
 			? new WebSocket(`ws://${window.location.host}`)
 			: undefined;
 
@@ -458,7 +457,7 @@ function startRouter(store: PreviewStore): void {
 
 	performRouting();
 
-	if (store.mode === PreviewDocumentMode.Static && !window.location.hash) {
+	if (store.mode === Types.PreviewDocumentMode.Static && !window.location.hash) {
 		window.location.hash = '#page-1';
 	}
 

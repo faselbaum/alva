@@ -1,6 +1,6 @@
-import * as Sender from '../message/client';
+// import * as Sender from '../message/client';
 import { isEqual } from 'lodash';
-import { ServerMessageType } from '../message';
+// import { ServerMessageType } from '../message';
 import * as Mobx from 'mobx';
 import * as Model from '../model';
 import * as Types from '../model/types';
@@ -91,11 +91,11 @@ export class ViewStore {
 			return;
 		}
 
-		Sender.send({
+		/* Sender.send({
 			type: ServerMessageType.ConnectPatternLibraryRequest,
 			id: uuid.v4(),
 			payload: project.toJSON()
-		});
+		}); */
 	}
 
 	@Mobx.action
@@ -502,6 +502,10 @@ export class ViewStore {
 
 	public getActiveAppView(): Types.AlvaView {
 		return this.app.getActiveView();
+	}
+
+	public getApp(): Model.AlvaApp {
+		return this.app;
 	}
 
 	public getAppState(): Types.AppState {
@@ -978,6 +982,19 @@ export class ViewStore {
 		this.usedPatternLibrary = usedPatternLibrary;
 	}
 
+	public showElementContextMenu(element: Model.Element): void {
+		/* Sender.send({
+			id: uuid.v4(),
+			payload: {
+				app: this.getApp().toJSON(),
+				hasClipobardElement: this.hasApplicableClipboardItem(),
+				project: this.getProject().toJSON(),
+				selectedElementId: element.getId()
+			},
+			type: ServerMessageType.ContextElementMenuRequest
+		}); */
+	}
+
 	@Mobx.action
 	public undo(): void {
 		const item = this.editHistory.back();
@@ -1039,21 +1056,6 @@ export class ViewStore {
 			element.getAncestors().forEach(ancestor => {
 				ancestor.setForcedOpen(false);
 			});
-		});
-	}
-
-	@Mobx.action
-	public updatePatternLibrary(): void {
-		const project = this.project;
-
-		if (!project) {
-			return;
-		}
-
-		Sender.send({
-			type: ServerMessageType.UpdatePatternLibraryRequest,
-			id: uuid.v4(),
-			payload: project.toJSON()
 		});
 	}
 }

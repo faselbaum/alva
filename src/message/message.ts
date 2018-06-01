@@ -29,6 +29,7 @@ export enum ServerMessageType {
 	ConnectPatternLibraryResponse = 'connect-pattern-library-response',
 	ContentRequest = 'content-request',
 	ContentResponse = 'content-response',
+	ContextElementMenuRequest = 'context-element-menu',
 	Copy = 'copy',
 	CopyElement = 'copy-page-element',
 	CreateNewFileRequest = 'create-new-file-request',
@@ -66,7 +67,8 @@ export enum ServerMessageType {
 	PatternLibraryChange = 'pattern-library-change',
 	Undo = 'undo',
 	UnselectElement = 'unselect-element',
-	UpdatePatternLibraryRequest = 'update-pattern-library-request'
+	UpdatePatternLibraryRequest = 'update-pattern-library-request',
+	UpdateMenu = 'update-menu'
 }
 
 export interface Envelope<V, T> {
@@ -89,6 +91,7 @@ export type ServerMessage =
 	| ConnectedPatternLibraryNotification
 	| ContentRequest
 	| ContentResponse
+	| ContextElementMenuRequest
 	| CopyPageElement
 	| CreateNewPage
 	| CreateScriptBundleRequest
@@ -126,6 +129,7 @@ export type ServerMessage =
 	| StyleGuideChange
 	| Undo
 	| UnselectElement
+	| UpdateMenu
 	| UpdatePatternLibraryRequest;
 
 export type AppLoaded = EmptyEnvelope<ServerMessageType.AppLoaded>;
@@ -162,6 +166,10 @@ export type ConnectPatternLibraryResponse = Envelope<
 >;
 export type ContentRequest = EmptyEnvelope<ServerMessageType.ContentRequest>;
 export type ContentResponse = Envelope<ServerMessageType.ContentResponse, string>;
+export type ContextElementMenuRequest = Envelope<
+	ServerMessageType.ContextElementMenuRequest,
+	Types.ElementContextMenuContext
+>;
 export type Copy = EmptyEnvelope<ServerMessageType.Copy>;
 export type CopyPageElement = Envelope<ServerMessageType.CopyElement, string>;
 export type CreateNewPage = Envelope<ServerMessageType.CreateNewPage, undefined>;
@@ -213,6 +221,7 @@ export type StyleGuideChange = Envelope<
 >;
 export type Undo = EmptyEnvelope<ServerMessageType.Undo>;
 export type UnselectElement = EmptyEnvelope<ServerMessageType.UnselectElement>;
+export type UpdateMenu = Envelope<ServerMessageType.UpdateMenu, Types.MenuContext>;
 export type UpdatePatternLibraryRequest = Envelope<
 	ServerMessageType.UpdatePatternLibraryRequest,
 	Types.SerializedProject

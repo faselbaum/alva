@@ -1,38 +1,28 @@
-import * as Analyzer from '../analyzer';
+import * as Analyzer from '../server/analyzer';
 import { checkForUpdates } from './auto-updater';
 import { Color } from '../components';
-import { createCompiler } from '../compiler/create-compiler';
+import { createCompiler } from '../server/compiler/create-compiler';
+import { createApplicationMenu } from './create-application-menu';
+import { createElementContexMenu } from './create-element-context-menu';
 import { app, BrowserWindow, dialog, screen } from 'electron';
 import * as electronIsDev from 'electron-is-dev';
 import * as Fs from 'fs';
 import * as getPort from 'get-port';
-import * as stringEscape from 'js-string-escape';
 import { isEqual, uniqWith } from 'lodash';
 import { PreviewMessageType, ServerMessage, ServerMessageType } from '../message';
 import * as MimeTypes from 'mime-types';
 import { Project } from '../model';
 import * as Path from 'path';
-import { Persistence, PersistenceState } from '../persistence';
-import * as Sender from '../message/server';
-import { createServer } from './server';
+import { Persistence, PersistenceState } from '../server/persistence';
+import { Sender } from '../message/server';
+import { createServer } from '../server/server';
 import * as Types from '../model/types';
 import * as Util from 'util';
 import * as uuid from 'uuid';
 
 const ElectronStore = require('electron-store');
 
-const APP_ENTRY = require.resolve('./renderer');
-
-const RENDERER_DOCUMENT = `<!doctype html>
-<html>
-<head>
-	<meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline'">
-</head>
-<body>
-	<div id="app" style="overflow: hidden; width: 100%; height: 100%;"></div>
-	<script>require('${stringEscape(APP_ENTRY)}')</script>
-</body>
-</html>`;
+// const APP_ENTRY = require.resolve('./renderer');
 
 const showOpenDialog = (options: Electron.OpenDialogOptions): Promise<string[]> =>
 	new Promise(resolve => dialog.showOpenDialog(options, resolve));
@@ -51,8 +41,19 @@ let projectPath: string | undefined;
 
 const userStore = new ElectronStore();
 
+const sender = new Sender();
+
+// Cast getPort return type from PromiseLike<number> to Promise<number>
+// to avoid async-promise tslint rule to produce errors here
+const starting = (async () => {
+	const port = await (getPort({ port: 1879 }) as Promise<number>);
+	const server = await createServer({ port });
+	return { server, port };
+})();
+
 async function createWindow(): Promise<void> {
 	const { width = 1280, height = 800 } = screen.getPrimaryDisplay().workAreaSize;
+	const { server, port } = await starting;
 
 	// Create the browser window.
 	win = new BrowserWindow({
@@ -62,23 +63,20 @@ async function createWindow(): Promise<void> {
 		minHeight: 380,
 		titleBarStyle: 'hiddenInset',
 		backgroundColor: Color.Grey97,
-		title: 'Alva'
+		title: 'Alva',
+		webPreferences: {
+			nodeIntegration: false
+		}
 	});
 
 	// and load the index.html of the app.
-	win.loadURL('data:text/html;charset=utf-8,' + encodeURI(RENDERER_DOCUMENT));
-
-	// Cast getPort return type from PromiseLike<number> to Promise<number>
-	// to avoid async-promise tslint rule to produce errors here
-	const port = await (getPort({ port: 1879 }) as Promise<number>);
-	const server = await createServer({ port });
+	win.loadURL(`http://localhost:${port}/index.html`);
 
 	const send = (message: ServerMessage): void => {
-		Sender.send(message);
 		server.emit('message', message);
 	};
 
-	Sender.receive(async message => {
+	sender.receive(async message => {
 		if (!message) {
 			return;
 		}
@@ -363,9 +361,19 @@ async function createWindow(): Promise<void> {
 						});
 					});
 				});
+				break;
+			}
+			case ServerMessageType.UpdateMenu: {
+				createApplicationMenu(message.payload, { sender });
+				break;
+			}
+			case ServerMessageType.ContextElementMenuRequest: {
+				createElementContexMenu(message.payload, { sender });
 			}
 		}
 	});
+
+	server.on('alva-message', message => sender.emit(message));
 
 	// Handle messages from preview
 	server.on('client-message', (envelope: string) => {
@@ -374,7 +382,7 @@ async function createWindow(): Promise<void> {
 
 			switch (message.type) {
 				case PreviewMessageType.ContentResponse: {
-					Sender.send({
+					sender.send({
 						id: message.id,
 						payload: message.payload,
 						type: ServerMessageType.ContentResponse
@@ -382,7 +390,7 @@ async function createWindow(): Promise<void> {
 					break;
 				}
 				case PreviewMessageType.SketchExportResponse: {
-					Sender.send({
+					sender.send({
 						id: message.id,
 						payload: message.payload,
 						type: ServerMessageType.SketchExportResponse
@@ -390,7 +398,7 @@ async function createWindow(): Promise<void> {
 					break;
 				}
 				case PreviewMessageType.SelectElement: {
-					Sender.send({
+					sender.send({
 						id: message.id,
 						payload: message.payload,
 						type: ServerMessageType.SelectElement
@@ -398,7 +406,7 @@ async function createWindow(): Promise<void> {
 					break;
 				}
 				case PreviewMessageType.UnselectElement: {
-					Sender.send({
+					sender.send({
 						id: message.id,
 						payload: undefined,
 						type: ServerMessageType.UnselectElement
@@ -406,7 +414,7 @@ async function createWindow(): Promise<void> {
 					break;
 				}
 				case PreviewMessageType.HighlightElement: {
-					Sender.send({
+					sender.send({
 						id: message.id,
 						payload: message.payload,
 						type: ServerMessageType.HighlightElement
@@ -437,8 +445,6 @@ async function createWindow(): Promise<void> {
 
 	// Install development tools in dev mode
 	if (electronIsDev) {
-		require('devtron').install();
-
 		const {
 			REACT_DEVELOPER_TOOLS,
 			REACT_PERF,

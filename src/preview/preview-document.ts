@@ -1,20 +1,16 @@
-export enum PreviewDocumentMode {
-	Live = 'live',
-	LiveMirror = 'live-mirror',
-	Static = 'static'
-}
+import * as Types from '../model/types';
 
 export type PreviewDocumentConfig = LivePreviewDocumentConfig | StaticPreviewDocumentConfig;
 
 export interface LivePreviewDocumentConfig {
 	data: object;
-	mode: PreviewDocumentMode.Live | PreviewDocumentMode.LiveMirror;
+	mode: Types.PreviewDocumentMode.Live | Types.PreviewDocumentMode.LiveMirror;
 }
 
 export interface StaticPreviewDocumentConfig {
 	content: string;
 	data: object;
-	mode: PreviewDocumentMode.Static;
+	mode: Types.PreviewDocumentMode.Static;
 	scripts: string;
 }
 
@@ -114,8 +110,8 @@ export const previewDocument = (config: PreviewDocumentConfig) => `<!doctype htm
 </head>
 <body>
 	<div id="preview">
-		${config.mode === PreviewDocumentMode.Static ? config.content : ''}
-		${config.mode === PreviewDocumentMode.Live ? PRELOADER : ''}
+		${config.mode === Types.PreviewDocumentMode.Static ? config.content : ''}
+		${config.mode === Types.PreviewDocumentMode.Live ? PRELOADER : ''}
 	</div>
 	<textarea data-data="alva" style="display: none">${encodeURIComponent(
 		JSON.stringify({
@@ -123,8 +119,8 @@ export const previewDocument = (config: PreviewDocumentConfig) => `<!doctype htm
 			mode: config.mode
 		})
 	)}</textarea>
-	${config.mode === PreviewDocumentMode.Static ? config.scripts : ''}
-	${config.mode !== PreviewDocumentMode.Static ? LIVE_SCRIPTS : ''}
+	${config.mode === Types.PreviewDocumentMode.Static ? config.scripts : ''}
+	${config.mode !== Types.PreviewDocumentMode.Static ? LIVE_SCRIPTS : ''}
 </body>
 </html>
 `;

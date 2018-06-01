@@ -412,3 +412,22 @@ export interface EditHistoryItem {
 	app: SerializedAlvaApp;
 	project: SerializedProject;
 }
+
+export interface MenuContext {
+	app: SerializedAlvaApp;
+	project: SerializedProject | undefined;
+	selectedElementId: string | undefined;
+}
+
+export interface ElementContextMenuContext {
+	app: SerializedAlvaApp;
+	project: SerializedProject;
+	selectedElementId: string;
+	hasClipobardElement: boolean;
+}
+
+export enum PreviewDocumentMode {
+	Live = 'live',
+	LiveMirror = 'live-mirror',
+	Static = 'static'
+}
